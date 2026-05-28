@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Harunbe Idle</title>
+<!-- PWA -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1f3a17">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Harunbe">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg0:#0d1a0c; --bg1:#16290f; --panel:#1f3a17; --panel2:#27481d;
+  --line:#0a1408; --gold:#f4c542; --gold2:#c98f1e; --leaf:#7fc14a;
+  --leaf2:#4e8a2a; --cream:#f3eccb; --dim:#9bb07f; --red:#d24b3e; --blue:#5fb6e8;
+  --slot:#13230d;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'VT323',monospace; font-size:20px; color:var(--cream);
+  background:
+    radial-gradient(120% 90% at 50% -10%, #1d3a14 0%, transparent 60%),
+    repeating-linear-gradient(0deg,#0d1a0c 0 3px,#0c180b 3px 6px),
+    var(--bg0);
+  image-rendering:pixelated; -webkit-font-smoothing:none;
+  overflow-x:hidden;
+}
+img{image-rendering:pixelated}
+.wrap{max-width:920px;margin:0 auto;padding:14px 12px 60px}
+h1{
+  font-family:'Press Start 2P';font-size:24px;color:var(--gold);
+  text-align:center;letter-spacing:2px;line-height:1.5;margin:6px 0 2px;
+  text-shadow:0 3px 0 var(--gold2), 0 5px 0 #000;
+}
+.sub{text-align:center;color:var(--dim);font-size:18px;margin-bottom:12px;letter-spacing:1px}
+.panel{
+  background:var(--panel);border:3px solid var(--line);
+  box-shadow:inset 0 0 0 2px #3a6b28, 0 4px 0 var(--line);
+  padding:12px;margin-bottom:12px;position:relative;
+}
+.panel h2{
+  font-family:'Press Start 2P';font-size:11px;color:var(--gold);
+  letter-spacing:1px;margin-bottom:10px;text-shadow:0 2px 0 #000;
+}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.res-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+.res{display:flex;align-items:center;gap:6px;background:var(--slot);border:2px solid var(--line);padding:5px 9px;}
+.res img{width:26px;height:26px}
+.res .v{color:var(--gold);min-width:42px}
+.res .lbl{color:var(--dim);font-size:15px}
+.stage{display:flex;flex-direction:column;align-items:center;gap:8px}
+#mascot{width:150px;height:150px;cursor:pointer;user-select:none;filter:drop-shadow(0 6px 0 #0a1408);transition:transform .06s;}
+#mascot:active{transform:translateY(3px) scale(.97)}
+.mood{font-size:16px;color:var(--leaf);letter-spacing:1px}
+.tapbtn{font-family:'Press Start 2P';font-size:10px;color:#1a1a1a;background:var(--gold);border:none;border-bottom:4px solid var(--gold2);padding:12px 18px;cursor:pointer;}
+.tapbtn:active{border-bottom-width:1px;transform:translateY(3px)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{font-family:'Press Start 2P';font-size:9px;color:var(--cream);background:var(--panel2);border:2px solid var(--line);border-bottom:4px solid var(--line);padding:9px 11px;cursor:pointer;letter-spacing:.5px;}
+.tab.active{color:#1a1a1a;background:var(--gold);border-bottom-color:var(--gold2)}
+.view{display:none}
+.view.active{display:block}
+.item{display:flex;align-items:center;gap:10px;background:var(--slot);border:2px solid var(--line);padding:8px;margin-bottom:8px;cursor:pointer;}
+.item:hover{background:#172b10}
+.item.locked{opacity:.4;cursor:not-allowed}
+.item img{width:40px;height:40px;flex:none}
+.item .name{color:var(--cream)}
+.item .meta{color:var(--dim);font-size:15px}
+.item .right{margin-left:auto;text-align:right}
+.item .cost{color:var(--gold)}
+.item .cost.cant{color:var(--red)}
+.item .own{color:var(--leaf);font-size:15px}
+.alloc{display:flex;align-items:center;gap:10px;background:var(--slot);border:2px solid var(--line);padding:8px;margin-bottom:8px}
+.alloc img{width:36px;height:36px}
+.bar{height:14px;background:#0a1408;border:2px solid var(--line);margin-top:5px;position:relative;overflow:hidden}
+.bar>i{position:absolute;inset:0;width:0;background:linear-gradient(#7fc14a,#4e8a2a);display:block}
+.bar.e>i{background:linear-gradient(#ffe07a,#e0a020)}
+.bar.m>i{background:linear-gradient(#9fd8ff,#3f8fd0)}
+.minibtn{font-family:'Press Start 2P';font-size:9px;background:var(--panel2);color:var(--cream);border:2px solid var(--line);border-bottom:3px solid var(--line);padding:6px 8px;cursor:pointer}
+.minibtn:active{transform:translateY(2px);border-bottom-width:1px}
+.minirow{display:flex;gap:5px;margin-top:6px}
+/* adventure */
+.combat{display:flex;justify-content:space-around;align-items:flex-end;background:linear-gradient(#1a3a12,#0f2409);border:2px solid var(--line);padding:14px 10px;margin-bottom:8px}
+.fighter{text-align:center}
+.fighter img{width:84px;height:84px}
+.hp{width:120px;height:12px;background:#0a1408;border:2px solid var(--line);margin:6px auto 0;overflow:hidden}
+.hp>i{display:block;height:100%;background:var(--red)}
+.hp.ally>i{background:var(--leaf)}
+.gearbox{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.gear{width:46px;height:52px;background:var(--slot);border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px}
+.gear img{width:30px;height:30px}
+.gear.has-item{border-color:var(--leaf2);cursor:pointer}
+.gear.has-item:hover{background:#172b10;border-color:var(--leaf)}
+.gear-slot-lbl{font-size:11px;color:var(--dim);text-align:center;margin-top:2px;line-height:1}
+/* stat row */
+.stat-row{display:flex;gap:14px;flex-wrap:wrap;background:var(--slot);border:2px solid var(--line);padding:6px 10px;margin-bottom:8px;align-items:center}
+.stat-pill{display:flex;align-items:center;gap:4px}
+.stat-pill .sk{color:var(--dim);font-size:14px}
+.stat-pill .sv{color:var(--gold);font-size:18px}
+/* boss warning */
+.boss-warn{color:var(--red);font-family:'Press Start 2P';font-size:8px;letter-spacing:1px;animation:blink .5s step-end infinite;margin-left:8px;vertical-align:middle}
+@keyframes blink{50%{opacity:0}}
+/* zone bar */
+.zone-bar{height:8px;background:#0a1408;border:2px solid var(--line);margin:4px 0 6px;overflow:hidden}
+.zone-bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .25s}
+.zone-bar.boss-bar>i{background:linear-gradient(90deg,#8f2b22,var(--red))}
+/* inventory */
+.inv-item{display:flex;align-items:center;gap:8px;background:var(--slot);border:2px solid var(--line);padding:6px 8px;margin-bottom:4px}
+.inv-item img{width:28px;height:28px;flex:none}
+.inv-item .iname{color:var(--cream);flex:1;font-size:17px;line-height:1.2}
+.inv-item .istats{color:var(--dim);font-size:14px;margin-top:2px}
+.inv-item.boss-loot .iname{color:var(--gold)}
+.ieqbtn{font-family:'Press Start 2P';font-size:7px;background:var(--panel2);color:var(--leaf);border:2px solid var(--leaf2);border-bottom:3px solid var(--leaf2);padding:5px 7px;cursor:pointer;white-space:nowrap;flex:none}
+.ieqbtn:active{transform:translateY(2px);border-bottom-width:1px}
+.note{color:var(--dim);font-size:15px;line-height:1.5}
+.foot{text-align:center;color:var(--dim);font-size:14px;margin-top:8px;letter-spacing:1px}
+.tokens{color:var(--gold)}
+.kbd{color:var(--gold)}
+.floaty{position:fixed;pointer-events:none;font-family:'Press Start 2P';font-size:11px;color:var(--gold);text-shadow:0 2px 0 #000;animation:fl 1s ease-out forwards;z-index:50}
+@keyframes fl{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-46px)}}
+/* quests & daily */
+.daily-box{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--slot);border:2px solid var(--gold2);padding:10px;margin-bottom:10px}
+.quest-row{display:flex;align-items:center;gap:8px;background:var(--slot);border:2px solid var(--line);padding:8px;margin-bottom:6px}
+.quest-row .grow{flex:1;min-width:0}
+.ach-item{display:flex;align-items:center;gap:8px;background:var(--slot);border:2px solid var(--line);padding:6px 8px;margin-bottom:4px}
+.ach-item.locked{opacity:.45}
+.ach-unlocked .iname{color:var(--gold)}
+.combo-floaty{color:#ff4;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>HARUNBE IDLE</h1>
+  <div class="sub">— jungle adventure idle —</div>
+  <div class="res-bar" id="resBar"></div>
+  <div class="panel">
+    <div class="row">
+      <div class="grow stage">
+        <img id="mascot" alt="Harunbe">
+        <div class="mood" id="mood">idle</div>
+        <button class="tapbtn" id="tapBtn">TAP HARUNBE (+bananas)</button>
+      </div>
+      <div class="grow">
+        <div class="note" id="rateNote"></div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+
+  <!-- JUNGLE -->
+  <div class="view active" data-view="jungle">
+    <div class="panel"><h2>JUNGLE — BUILDINGS</h2><div id="bldgs"></div></div>
+  </div>
+
+  <!-- POWER -->
+  <div class="view" data-view="power">
+    <div class="panel">
+      <h2>ENERGY → NGU (number go up)</h2>
+      <div class="note">Pour Energy into slots for a <b>permanent</b> banana multiplier.</div>
+      <div class="minirow"><button class="minibtn" id="idleE">Auto-split Energy: OFF</button></div>
+      <div id="nguSlots" style="margin-top:8px"></div>
+    </div>
+    <div class="panel">
+      <h2>MAGIC → WANDOOS CORE</h2>
+      <div class="note">Allocated Magic slowly grows a global production multiplier.</div>
+      <div id="wandoos" style="margin-top:8px"></div>
+    </div>
+    <div class="panel">
+      <h2>ENERGY → AUGMENTS (combat boosts)</h2>
+      <div class="note">Each augment has a <b>base</b> (levels up the stat) and a <b>boost</b> (multiplies the base). Both consume energy.</div>
+      <div id="augSlots" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- ADVENTURE -->
+  <div class="view" data-view="adv">
+    <div class="panel">
+      <h2>ADVENTURE — <span id="zoneName"></span></h2>
+      <div class="combat">
+        <div class="fighter">
+          <img id="advHero" alt="Harunbe">
+          <div class="hp ally"><i id="heroHp"></i></div>
+          <div class="note" id="heroStats"></div>
+        </div>
+        <div class="fighter">
+          <img id="advEnemy" alt="Enemy">
+          <div class="hp"><i id="enemyHp"></i></div>
+          <div class="note" id="enemyStats"></div>
+        </div>
+      </div>
+      <div class="stat-row" id="statRow"></div>
+      <div class="note" id="advLog"></div>
+      <div class="zone-bar" id="zoneBarWrap"><i id="zoneBar"></i></div>
+      <div style="margin-top:10px">
+        <h2>EQUIPPED <span style="color:var(--dim);font-size:9px">— click slot to unequip</span></h2>
+        <div class="gearbox" id="gearBox"></div>
+      </div>
+      <div style="margin-top:10px">
+        <h2>INVENTORY — <span id="invCount" style="color:var(--dim)">0/30</span></h2>
+        <div id="invList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REBIRTH -->
+  <div class="view" data-view="rebirth">
+    <div class="panel">
+      <h2>REBIRTH</h2>
+      <div class="note" id="rebirthNote"></div>
+      <div class="minirow" style="margin-top:10px"><button class="tapbtn" id="rebirthBtn">REBIRTH</button></div>
+    </div>
+  </div>
+
+  <!-- QUESTS -->
+  <div class="view" data-view="quests">
+    <div class="panel" id="questPanel"></div>
+  </div>
+
+  <div class="foot">
+    auto-saves locally • <span id="saveState"></span> &nbsp;|&nbsp; <span class="kbd">REAL_SPRITES</span> block = sprite swap point
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   SPRITE SWAP POINT
+   Fill REAL_SPRITES with paths to your PNGs; missing names fall back to
+   the generated placeholder below.
+   ========================================================================= */
+const REAL_SPRITES = {
+  // harunbe_idle:"sprites/harunbe_idle.png",
+  // boss:"sprites/boss.png",
+  // trophy:"sprites/trophy.png",
+  // augment:"sprites/augment.png",
+  // quest:"sprites/quest.png",
+  // daily:"sprites/daily.png",
+  // click_fx:"sprites/click_fx.png",
+};
+
+/* ── PROGRESSION TUNING ────────────────────────────────────────────────────
+   Three numbers — change only these to go faster/slower:
+     rebirthDiv  : lower → earlier first rebirth  (~50-70 min default)
+     nguRate     : higher → faster NGU levelling
+     wandoosRate : higher → faster Wandoos levelling
+   ─────────────────────────────────────────────────────────────────────────── */
+const TUNE = {
+  rebirthDiv:  5e5,   // ← #1
+  nguRate:     0.6,   // ← #2
+  wandoosRate: 0.5,   // ← #3
+};
+
+/* ---- pixel-art renderer ---- */
+function px(grid,pal,scale){
+  scale=scale||8;
+  const h=grid.length,w=grid[0].length;
+  const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;
+  const x=c.getContext('2d');
+  for(let r=0;r<h;r++)for(let q=0;q<w;q++){
+    const col=pal[grid[r][q]];if(!col)continue;
+    x.fillStyle=col;x.fillRect(q*scale,r*scale,scale,scale);
+  }
+  return c.toDataURL();
+}
+const P={'.':null,D:'#1c2a10',B:'#4a5d2e',b:'#3a4a22',F:'#d8b483',E:'#15140f',
+         W:'#f3eccb',Y:'#f4c542',y:'#c98f1e',G:'#7fc14a',g:'#4e8a2a',
+         R:'#d24b3e',r:'#8f2b22',U:'#5fb6e8',u:'#2f7fb0',K:'#3a3a3a',k:'#222',
+         M:'#caa6e0',m:'#7e5fa0',O:'#e08a2a',S:'#9bb07f'};
+
+const GOR=["................",".....DDDDDD.....","...DDBBBBBBDD...","..DBBBBBBBBBBD..","..DBBFFFFFFBBD..","..DBFFFFFFFFBD..","..DBFEFFFFEFBD..","..DBFFFFFFFFBD..","..DBBFFFFFFBBD..",".DBBBBBBBBBBBBD.",".DBBBbBBBBbBBBD.",".DBBBbBBBBbBBBD.","..DDBBBBBBBBDD...","...DD.DDDD.DD..."];
+const GOR_HAPPY=["......DDDD......",".DD..DBBBBD..DD.",".DBD.DBBBBD.DBD.",".DBBDBBBBBBDBBD.","..DBBBFFFFBBBD..","..DBFFWWWWFFBD..","..DBFEFWWFEFBD..","..DBFFFWWFFFBD..","..DBBFWWWWFBBD..",".DBBBBBBBBBBBBD.",".DBBBbBBBBbBBBD.",".DBBBbBBBBbBBBD.","..DDBBBBBBBBDD...","...DD.DDDD.DD..."];
+const GOR_SLEEP=["................",".....DDDDDD..W..","...DDBBBBBBDDW..","..DBBBBBBBBBBD..","..DBBFFFFFFBBD..","..DBFFFFFFFFBD..","..DBF__FF__FBD..","..DBFFFFFFFFBD..","..DBBFFFFFFBBD..",".DBBBBBBBBBBBBD.",".DBBBbBBBBbBBBD.",".DBBBbBBBBbBBBD.","..DDBBBBBBBBDD...","...DD.DDDD.DD..."];
+const P_SLEEP=Object.assign({},P,{'_':'#1c2a10'});
+const palIdle=P;
+const palAngry=Object.assign({},P,{F:'#e0a36b',E:'#d24b3e'});
+const palWork=Object.assign({},P,{F:'#d8b483',E:'#5fb6e8'});
+const palEvolve=Object.assign({},P,{B:'#caa05a',b:'#a87f33',D:'#6e521b',F:'#fbe6a8',E:'#15140f'});
+
+/* icon grids (12×12) */
+const I_BANANA=["............","........YY..",".......Yy...","......Yy....",".....Yy.....","....Yy......","...Yy.......","..Yyy.......",".Yyy........",".Yy.........","..yy........","............"];
+const I_COIN  =["....yyyy....","..yyYYYYyy..",".yYYYYYYYy.",".yYYWWYYYy.","yYYWYYWYYy.","yYYYYYYYYy.","yYYWYYWYYy.",".yYYWWYYYy.",".yYYYYYYYy.","..yyYYYYyy..","....yyyy....","............"];
+const I_BOLT  =["......YY....",".....YY.....","....YY......","...YYYYY....","..YYYYY.....","....YY......","...YY.......","..YY........",".YY.........","............","............","............"];
+const I_FLASK =["....GG......","....GG......","....GG......","...gGGg.....","..gGGGGg....","..gGggGg....",".gGGGGGGg...",".gGGGGGGg...","..gGGGGg....","...gggg.....","............","............"];
+const I_GEM   =["....GG......","...gGGg.....","..gGGGGg....",".gGGGGGGg...","GGGGGGGGGG..",".gGGGGGGg...","..gGGGGg....","...gGGg.....","....GG......","............","............","............"];
+const I_TOKEN =["...yyyy.....","..yYYYYy....",".yYBBBBYy...",".yYBFFBYy...",".yYBFFBYy...",".yYBBBBYy...","..yYYYYy....","...yyyy.....","............","............","............","............"];
+const I_HUT   =["............","....DD......","...DGGD.....","..DGGGGD....",".DGGGGGGD...","DDDDDDDDDD..","D.kk..kk.D..","D.kk..kk.D..","D.kk..kk.D..","DDDDDDDDDD..","............","............"];
+const I_PLANT =["..G...G...G.",".GGG.GGG.GGG",".GGG.GGG.GGG","..b...b...b.","..b...b..Yb.","..b..Yb...b.","..bbbbbbbbb.","..bbbbbbbbb.","............","............","............","............"];
+const I_LAB   =["KKKKKKKKKK..","K........K..","K.UU..UU.K..","K.UU..UU.K..","K........K..","K..UUUU..K..","K........K..","KKKKKKKKKK..","............","............","............","............"];
+const I_GEN   =["..KKKKKK....",".KkkkkkkK...",".KkYYYYkK...",".KkYRRYkK...",".KkYYYYkK...",".KkkkkkkK...",".KKKKKKKK...","..K....K....","..KKKKKK....","............","............","............"];
+const I_TRADE =["RRRRRRRRRR..","WRWRWRWRWR..","RRRRRRRRRR..","..K....K....","..K.YY.K....","..K.YY.K....","..KKKKKK....","............","............","............","............","............"];
+const I_UP    =["....YY......","...YYYY.....","..YYYYYY....",".YYYYYYYY...","YYY.YY.YYY..","....YY......","....YY......","....YY......","............","............","............","............"];
+const I_POACH =["...kkkk.....","..kRRRRk....","..kRrrRk....","..kReeRk....","..kRRRRk....","...rRRr.....","..rrRRrr....",".rr.RR.rr...","....RR......","...r..r.....","..r....r....","............"];
+const I_ALLY  =["...gggg.....","..gGGGGg....","..gGFFGg....","..gGFFGg....","..gGGGGg....","...SGGS.....","..SSGGSS....",".SS.GG.SS...","....GG......","...S..S.....","..S....S....","............"];
+const I_GEAR  =["...KKKK.....","..KWWWWK....","..KWUUWK....","..KWUUWK....","..KWWWWK....","...KKKK.....","............","............","............","............","............","............"];
+const I_NGU   =["..M..M..M...",".MmMMmMMm...","MMMMMMMMMM..",".MmMMmMMm...","..M.YY.M....","....YY......","...YYYY.....","..YYMMYY....",".YY.MM.YY...","............","............","............"];
+const I_CORE  =["....UU......","..UUuuUU....",".UuuMMuuU...","UuuMWWMuuU..","UuuMWWMuuU..",".UuuMMuuU...","..UUuuUU....","....UU......","............","............","............","............"];
+
+/* Phase B sprites */
+const I_BOSS=[
+  "..YYyYYy....",
+  "..YYYYYYYY..",
+  "....kkkk....",
+  "...kRRRRk...",
+  "...kRrrRk...",
+  "...kROORk...",
+  "...kRRRRk...",
+  "....rRRr....",
+  "...rrRRrr...",
+  "..RR.RR.RR..",
+  "....RRRR....",
+  "...rr..rr...",
+];
+const I_TROPHY=[
+  "...YYYYYY...",
+  "..YYYyYYYY..",
+  ".YYYWyWYYY..",
+  ".YYYyYYYYY..",
+  ".YYYYyYYYY..",
+  "..YYYYYYYY..",
+  "....YYYY....",
+  "....yYYy....",
+  "...yyYYyy...",
+  "..YYYYYYYY..",
+  "............",
+  "............",
+];
+
+/* Phase D sprites */
+const I_QUEST=[
+  "...WWWWWW...",
+  "..WyyyyyW...",
+  ".WWWWWWWWy..",
+  ".W.YYYY.Wy..",
+  ".W.YYYY.Wy..",
+  ".W.yyyy.Wy..",
+  ".W......Wy..",
+  ".W.YY...Wy..",
+  ".WWWWWWWWy..",
+  "..WyyyyyW...",
+  "...WWWWWW...",
+  "............",
+];
+const I_DAILY=[
+  "....YY......",
+  "Y...YY...Y..",
+  ".Y.YYYY.Y...",
+  "..YYYYYY....",
+  "YYYYyYYYYY..",
+  "yyyyYyyyyy..",
+  "YYYYyYYYYY..",
+  "..YYYYYY....",
+  ".Y.YYYY.Y...",
+  "Y...YY...Y..",
+  "....YY......",
+  "............",
+];
+const I_CLICK_FX=[
+  "....Y.Y.....",
+  "...Y.Y.Y....",
+  "Y...YYY...Y.",
+  ".Y.YYYYY.Y..",
+  "..YYYYYYY...",
+  "YYYYYYYYYY..",
+  "..YYYYYYY...",
+  ".Y.YYYYY.Y..",
+  "Y...YYY...Y.",
+  "...Y.Y.Y....",
+  "....Y.Y.....",
+  "............",
+];
+
+/* Phase C — augment crystal sprite */
+const I_AUGMENT=[
+  "....mmmm....",
+  "...mMMMmm...",
+  "..mMUuUMm...",
+  ".mMUuWuUMm..",
+  ".mMUuWuUMm..",
+  "..mMUuUMm...",
+  "...mMMMmm...",
+  "....mmmm....",
+  "....mMmm....",
+  "...mMMMmm...",
+  "...mmmmmm...",
+  "............",
+];
+
+const PH={
+  harunbe_idle:   px(GOR,palIdle,9),
+  harunbe_happy:  px(GOR_HAPPY,palIdle,9),
+  harunbe_angry:  px(GOR,palAngry,9),
+  harunbe_work:   px(GOR,palWork,9),
+  harunbe_sleep:  px(GOR_SLEEP,P_SLEEP,9),
+  harunbe_evolved:px(GOR,palEvolve,9),
+  res_banana:px(I_BANANA,P,5), res_coin:px(I_COIN,P,5),
+  res_energy:px(I_BOLT,P,5),   res_magic:px(I_FLASK,P,5),
+  res_gem:px(I_GEM,P,5),       res_token:px(I_TOKEN,P,5),
+  bldg_outpost:px(I_HUT,P,6),  bldg_plantation:px(I_PLANT,P,6),
+  bldg_lab:px(I_LAB,P,6),      bldg_generator:px(I_GEN,P,6),
+  bldg_trade:px(I_TRADE,P,6),  up:px(I_UP,P,5),
+  enemy_poacher:px(I_POACH,P,7), ally_explorer:px(I_ALLY,P,7),
+  gear:px(I_GEAR,P,6), ngu:px(I_NGU,P,6), core:px(I_CORE,P,6),
+  boss:px(I_BOSS,P,7), trophy:px(I_TROPHY,P,6),
+  augment:px(I_AUGMENT,P,6),
+  quest:px(I_QUEST,P,6),  daily:px(I_DAILY,P,6),  click_fx:px(I_CLICK_FX,P,6),
+};
+function sprite(name){ return REAL_SPRITES[name]||PH[name]||PH.up; }
+
+/* ── Phase B data tables ─────────────────────────────────────────────────── */
+const ZONES=['Misty Lowlands','Banana Grove','Poacher Camp','Ruined Temple','Volcano Rim',
+             'Shadow Falls','Cursed Cavern','Blood Marsh','Storm Peaks','Dragon Spine'];
+const SLOT_NAMES=['Head','Chest','Legs','Weapon','Charm'];
+const ITEM_NAMES=[
+  ['Leaf Cap',     'Iron Helm',    'Bone Crown',    'Chaos Hood'   ],
+  ['Bark Armor',   'Chain Vest',   'Temple Coat',   'Warden Mail'  ],
+  ['Vine Wraps',   'Scout Boots',  'Stone Greaves', 'Shadow Steps' ],
+  ['Sharp Branch', 'Hunter Spear', 'Runed Blade',   'Volcano Edge' ],
+  ['Jungle Charm', 'Power Sigil',  'Ancient Token', 'Chaos Crystal'],
+];
+const ENEMY_TIERS=[
+  {name:'Poacher',    spr:'enemy_poacher',hpMult:1.0,dmgMult:1.0,minZone:1},
+  {name:'Bandit',     spr:'enemy_poacher',hpMult:1.4,dmgMult:1.3,minZone:3},
+  {name:'Tomb Raider',spr:'enemy_poacher',hpMult:1.9,dmgMult:1.7,minZone:5},
+  {name:'Cultist',    spr:'enemy_poacher',hpMult:2.6,dmgMult:2.2,minZone:8},
+];
+
+/* Phase C — augment definitions */
+const AUGS=[
+  {name:'Iron Skin',    stat:'tgh', perLvl:1.0, desc:'Toughness per level'},
+  {name:'Berserker',    stat:'pwr', perLvl:1.0, desc:'Power per level'},
+  {name:'Vitality',     stat:'hth', perLvl:5.0, desc:'Max HP per level'},
+  {name:'Regeneration', stat:'rgn', perLvl:0.2, desc:'Regen/s per level'},
+  {name:'Battle Fury',  stat:'all', perLvl:0.5, desc:'All combat stats per level'},
+];
+
+/* Phase D — quest types */
+const QTYPES=[
+  {t:'bananas',  lbl:d=>`Earn ${fmt(d)} bananas`,      val:()=>S.totalBananas,                    deltas:[2000,8000,30000],  rew:d=>({coins:Math.floor(d/30),gems:0})},
+  {t:'kills',    lbl:d=>`Defeat ${d} enemies`,          val:()=>S.adv.kills,                       deltas:[15,50,150],        rew:d=>({coins:d*3,gems:d>=50?1:0})},
+  {t:'zone',     lbl:d=>`Advance ${d} zone(s)`,         val:()=>S.adv.zone,                        deltas:[1,2,3],            rew:d=>({gems:d*2,coins:100})},
+  {t:'buildings',lbl:d=>`Own ${d} buildings`,           val:()=>S.gens.reduce((a,g)=>a+g.n,0),    deltas:[5,10,20],          rew:d=>({coins:d*25,gems:0})},
+  {t:'rebirths', lbl:d=>`Do ${d} rebirth(s)`,           val:()=>S.rebirths,                        deltas:[1,2],              rew:d=>({gems:5*d,coins:0})},
+  {t:'bossKills',lbl:d=>`Slay ${d} boss(es)`,           val:()=>S.adv.bossKills||0,                deltas:[1,3,5],            rew:d=>({gems:d*3,coins:d*50})},
+];
+/* Phase D — achievements */
+const ACHIEVEMENTS=[
+  {id:'first_tap',   name:'First Tap',     desc:'Tap Harunbe for the first time',  check:()=>S.totalBananas>=1},
+  {id:'zone5',       name:'Deep Jungle',   desc:'Reach adventure zone 5',           check:()=>S.adv.zone>=5},
+  {id:'zone10',      name:'Dragon Spine',  desc:'Reach adventure zone 10',          check:()=>S.adv.zone>=10},
+  {id:'rebirth1',    name:'Born Again',    desc:'Complete 1 rebirth',               check:()=>S.rebirths>=1},
+  {id:'rebirth5',    name:'Five Lives',    desc:'Complete 5 rebirths',              check:()=>S.rebirths>=5},
+  {id:'kills100',    name:'Centurion',     desc:'Defeat 100 enemies total',         check:()=>S.adv.kills>=100},
+  {id:'kills1000',   name:'Warlord',       desc:'Defeat 1,000 enemies total',       check:()=>S.adv.kills>=1000},
+  {id:'boss5',       name:'Boss Slayer',   desc:'Defeat 5 bosses',                  check:()=>(S.adv.bossKills||0)>=5},
+  {id:'quest10',     name:'Quest Seeker',  desc:'Complete 10 quests',               check:()=>(S.quests&&S.quests.totalCompleted>=10)},
+  {id:'aug10',       name:'Augmented',     desc:'Reach augment level 10',           check:()=>S.augs.some(a=>a.lvlAug>=10)},
+  {id:'daily3',      name:'Regular',       desc:'Claim 3-day daily streak',         check:()=>(S.daily&&S.daily.streak>=3)},
+  {id:'ngu20',       name:'NGU Surge',     desc:'Any NGU slot reach level 20',      check:()=>S.ngu.some(s=>s.lvl>=20)},
+];
+
+/* ====================== GAME STATE ====================== */
+const S={
+  bananas:0, totalBananas:0, coins:0, gems:0,
+  energy:{cap:100,used:0,rate:6}, magic:{cap:60,used:0,rate:3},
+  click:1,
+  gens:[
+    {id:'outpost', name:'Jungle Outpost',    spr:'bldg_outpost',    n:0,base:15,    mult:1.15,prod:0.3},
+    {id:'plant',   name:'Banana Plantation', spr:'bldg_plantation', n:0,base:120,   mult:1.15,prod:1.6},
+    {id:'lab',     name:'Researcher Hub',    spr:'bldg_lab',        n:0,base:1300,  mult:1.16,prod:9,  ecap:20},
+    {id:'gen',     name:'Generator',         spr:'bldg_generator',  n:0,base:14000, mult:1.17,prod:55, ecap:12},
+    {id:'trade',   name:'Trading Post',      spr:'bldg_trade',      n:0,base:160000,mult:1.18,prod:280},
+  ],
+  ngu:[
+    {name:'Banana Power',alloc:0,lvl:0,prog:0,need:30},
+    {name:'Click Power', alloc:0,lvl:0,prog:0,need:40},
+    {name:'Jungle Force',alloc:0,lvl:0,prog:0,need:55},
+  ],
+  idleE:false,
+  wandoos:{alloc:0,lvl:0,prog:0,need:50},
+  augs:Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100})),
+  adv:{
+    zone:1, hp:50, kills:0, zoneKills:0, isBoss:false, enemyHp:0, bossKills:0,
+    gear:[null,null,null,null,null],
+    inventory:[],
+  },
+  quests:{slots:[],totalCompleted:0},
+  daily:{lastClaim:0,streak:0},
+  ach:[],
+  rebirths:0, tokens:0, last:Date.now(),
+};
+
+/* ── Derived functions ────────────────────────────────────────────────────── */
+function equippedStat(key){ return S.adv.gear.reduce((a,g)=>a+(g?(g[key]||0):0),0); }
+function augStat(key){
+  let t=0;
+  AUGS.forEach((def,i)=>{
+    const aug=S.augs[i]; if(!aug||aug.lvlAug===0) return;
+    const bm=1+aug.lvlBoost*0.5;
+    if(def.stat===key)       t+=aug.lvlAug*def.perLvl*bm;
+    if(def.stat==='all')     t+=aug.lvlAug*def.perLvl*bm;
+  });
+  return t;
+}
+function nguBananaMult(){ return (1+S.ngu[0].lvl*0.08)*(1+S.ngu[2].lvl*0.05); }
+function nguClickMult(){ return 1+S.ngu[1].lvl*0.15; }
+function wandoosMult(){ return 1+S.wandoos.lvl*0.04; }
+function tokenMult(){ return 1+S.tokens*0.10; }
+function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult(); }
+function heroPower(){ return 5+S.rebirths*3+equippedStat('pwr')+Math.floor(S.ngu[2].lvl*1.5)+Math.floor(augStat('pwr')); }
+function heroToughness(){ return equippedStat('tgh')+Math.floor(augStat('tgh')); }
+function heroMaxHp(){ return 50+S.adv.zone*10+S.rebirths*15+equippedStat('hth')+Math.floor(augStat('hth')); }
+function heroRegen(){ return equippedStat('rgn')*0.5+augStat('rgn'); }
+function getEnemyTier(zone){ let t=ENEMY_TIERS[0]; ENEMY_TIERS.forEach(e=>{if(zone>=e.minZone)t=e;}); return t; }
+function enemyBaseHp(zone){ return Math.floor(18*Math.pow(1.35,zone-1)); }
+function currentEnemyMaxHp(){
+  const t=getEnemyTier(S.adv.zone);
+  const b=enemyBaseHp(S.adv.zone);
+  return S.adv.isBoss ? Math.floor(b*t.hpMult*3) : Math.floor(b*t.hpMult);
+}
+function rollGear(zone,slot,isBoss){
+  const tier=Math.min(3,Math.floor((zone-1)/3));
+  const base=zone+Math.floor(Math.random()*3);
+  const name=ITEM_NAMES[slot][tier];
+  let pwr=0,tgh=0,hth=0,rgn=0;
+  if(slot===3){      pwr=base+(isBoss?3:0); tgh=Math.floor(base*0.1); }
+  else if(slot===4){ rgn=Math.max(1,Math.floor(base*0.3)+(isBoss?2:0)); pwr=Math.floor(base*0.3); hth=base*2; }
+  else {             tgh=Math.floor(base*0.4)+(isBoss?1:0); hth=base*3+(isBoss?base:0); pwr=Math.floor(base*0.1); }
+  return {slot,name,pwr,tgh,hth,rgn,zone,isBoss};
+}
+function bananasPerSec(){ return S.gens.reduce((a,g)=>a+g.n*g.prod,0)*globalMult(); }
+function genCost(g){ return Math.floor(g.base*Math.pow(g.mult,g.n)); }
+
+/* number format */
+function fmt(n){
+  n=+n; if(!isFinite(n)||n<0) return '0';
+  if(n<1000) return (Math.floor(n*10)/10).toString().replace(/\.0$/,'');
+  const u=['K','M','B','T','Qa','Qi','Sx','Sp']; let i=-1;
+  while(n>=1000&&i<u.length-1){n/=1000;i++;}
+  return (Math.floor(n*100)/100)+u[i];
+}
+
+/* ====================== RENDER ====================== */
+const $=s=>document.querySelector(s);
+const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
+
+function renderResBar(){
+  const defs=[
+    ['res_banana','bananas',S.bananas],['res_coin','coins',S.coins],
+    ['res_energy','energy',S.energy.cap-S.energy.used,S.energy.cap],
+    ['res_magic','magic',S.magic.cap-S.magic.used,S.magic.cap],
+    ['res_token','tokens',S.tokens],['res_gem','gems',S.gems],
+  ];
+  const bar=$('#resBar'); bar.innerHTML='';
+  defs.forEach(d=>{
+    const r=el('div','res');
+    const v=d[3]!=null?fmt(d[2])+'/'+fmt(d[3]):fmt(d[2]);
+    r.innerHTML=`<img src="${sprite(d[0])}"><span class="v">${v}</span><span class="lbl">${d[1]}</span>`;
+    bar.appendChild(r);
+  });
+}
+
+function renderBldgs(){
+  const box=$('#bldgs'); box.innerHTML='';
+  S.gens.forEach((g,i)=>{
+    const prev=i===0||S.gens[i-1].n>0;
+    const cost=genCost(g),can=S.bananas>=cost;
+    const it=el('div','item'+(prev?'':' locked'));
+    it.innerHTML=`<img src="${sprite(g.spr)}">
+      <div><div class="name">${prev?g.name:'???'}</div>
+      <div class="meta">${prev?('+'+fmt(g.prod)+'/s each'+(g.ecap?' ⚡+'+g.ecap+' cap':'')):'unlock previous'}</div></div>
+      <div class="right"><div class="cost ${can?'':'cant'}">${fmt(cost)} 🍌</div>
+      <div class="own">owned ${g.n}</div></div>`;
+    if(prev) it.onclick=()=>{
+      if(S.bananas>=genCost(g)){S.bananas-=genCost(g);g.n++;
+        if(g.ecap)S.energy.cap+=g.ecap; renderBldgs();renderResBar();}
+    };
+    box.appendChild(it);
+  });
+}
+
+function renderNGU(){
+  const box=$('#nguSlots'); box.innerHTML='';
+  S.ngu.forEach(slot=>{
+    const a=el('div','alloc');
+    a.innerHTML=`<img src="${sprite('ngu')}">
+      <div class="grow"><div>${slot.name} — <span style="color:var(--leaf)">Lv ${slot.lvl}</span>
+      <span class="note">(${fmt(slot.alloc)} energy)</span></div>
+      <div class="bar e"><i style="width:${Math.min(100,slot.prog/slot.need*100)}%"></i></div>
+      <div class="minirow"></div></div>`;
+    const row=a.querySelector('.minirow');
+    [['−10',-10],['+10',10],['Max',999999],['0',-999999]].forEach(([l,d])=>{
+      const b=el('button','minibtn');
+      b.textContent=l;
+      b.onclick=()=>{
+        const others=S.energy.used-slot.alloc;
+        let v=slot.alloc+d; v=Math.max(0,Math.min(v,S.energy.cap-others));
+        slot.alloc=v; S.energy.used=others+v; renderNGU(); renderResBar();
+      };
+      row.appendChild(b);
+    });
+    box.appendChild(a);
+  });
+}
+
+function renderWandoos(){
+  const box=$('#wandoos'); box.innerHTML='';
+  const w=S.wandoos;
+  const a=el('div','alloc');
+  a.innerHTML=`<img src="${sprite('core')}">
+    <div class="grow"><div>Wandoos Core — <span style="color:var(--leaf)">Lv ${w.lvl}</span>
+    <span class="note">(+${((wandoosMult()-1)*100).toFixed(0)}% all) • ${fmt(w.alloc)} magic</span></div>
+    <div class="bar m"><i style="width:${Math.min(100,w.prog/w.need*100)}%"></i></div>
+    <div class="minirow"></div></div>`;
+  const row=a.querySelector('.minirow');
+  [['−10',-10],['+10',10],['Max',999999],['0',-999999]].forEach(([l,d])=>{
+    const b=el('button','minibtn');
+    b.textContent=l;
+    b.onclick=()=>{
+      const others=S.magic.used-w.alloc;
+      let v=w.alloc+d; v=Math.max(0,Math.min(v,S.magic.cap-others));
+      w.alloc=v; S.magic.used=others+v; renderWandoos(); renderResBar();
+    };
+    row.appendChild(b);
+  });
+  box.appendChild(a);
+}
+
+function renderAugs(){
+  const box=$('#augSlots'); box.innerHTML='';
+  AUGS.forEach((def,i)=>{
+    const aug=S.augs[i];
+    const bm=(1+aug.lvlBoost*0.5);
+    const bonus=(aug.lvlAug*def.perLvl*bm).toFixed(1);
+    const bonusLbl=def.stat==='all'?`all +${bonus}`:`${def.stat.toUpperCase()} +${bonus}`;
+    const aPct=Math.min(100,aug.needAug>0?aug.progAug/aug.needAug*100:0);
+    const bPct=Math.min(100,aug.needBoost>0?aug.progBoost/aug.needBoost*100:0);
+    const a=el('div','alloc');
+    a.innerHTML=`<img src="${sprite('augment')}" style="width:36px;height:36px;flex:none">
+      <div class="grow">
+        <div>${def.name} — <span style="color:var(--leaf)">Lv ${aug.lvlAug}</span>
+          <span class="note"> (${bonusLbl} • ${fmt(aug.eAug)} ⚡)</span></div>
+        <div class="bar e"><i style="width:${aPct}%"></i></div>
+        <div class="minirow"></div>
+        <div style="margin-top:5px;font-size:15px;color:var(--blue)">↳ Boost — <span style="color:var(--leaf)">Lv ${aug.lvlBoost}</span>
+          <span class="note"> (×${bm.toFixed(1)} • ${fmt(aug.eBoost)} ⚡)</span></div>
+        <div class="bar e" style="opacity:.65"><i style="width:${bPct}%"></i></div>
+        <div class="minirow"></div>
+      </div>`;
+    const rows=a.querySelectorAll('.minirow');
+    [['−10',-10],['+10',10],['Max',999999],['0',-999999]].forEach(([l,d])=>{
+      const b=el('button','minibtn'); b.textContent=l;
+      b.onclick=()=>{
+        const oth=S.energy.used-aug.eAug;
+        aug.eAug=Math.max(0,Math.min(aug.eAug+d,S.energy.cap-oth));
+        S.energy.used=oth+aug.eAug; renderAugs(); renderResBar();
+      };
+      rows[0].appendChild(b);
+    });
+    [['−10',-10],['+10',10],['Max',999999],['0',-999999]].forEach(([l,d])=>{
+      const b=el('button','minibtn'); b.textContent=l;
+      b.onclick=()=>{
+        const oth=S.energy.used-aug.eBoost;
+        aug.eBoost=Math.max(0,Math.min(aug.eBoost+d,S.energy.cap-oth));
+        S.energy.used=oth+aug.eBoost; renderAugs(); renderResBar();
+      };
+      rows[1].appendChild(b);
+    });
+    box.appendChild(a);
+  });
+}
+
+function renderAdv(){
+  const a=S.adv;
+  const tier=getEnemyTier(a.zone);
+  const eMax=currentEnemyMaxHp();
+  const hMax=heroMaxHp();
+
+  // Header
+  $('#zoneName').innerHTML=ZONES[(a.zone-1)%ZONES.length]+
+    ' <span style="color:var(--dim)">(Z'+a.zone+')</span>'+
+    (a.isBoss?'<span class="boss-warn">★ BOSS</span>':'');
+
+  // Hero
+  $('#advHero').src=sprite(S.rebirths>0?'harunbe_evolved':'harunbe_idle');
+  $('#heroHp').style.width=Math.max(0,a.hp/hMax*100)+'%';
+  $('#heroStats').textContent='HP '+Math.ceil(a.hp)+'/'+hMax;
+
+  // Enemy
+  $('#advEnemy').src=sprite(a.isBoss?'boss':tier.spr);
+  $('#enemyHp').style.width=Math.max(0,a.enemyHp/eMax*100)+'%';
+  $('#enemyStats').textContent=(a.isBoss?'★ BOSS ':'')+tier.name+
+    ' HP '+Math.ceil(Math.max(0,a.enemyHp));
+
+  // Stat row
+  const sr=$('#statRow'); sr.innerHTML='';
+  [{k:'PWR',v:heroPower()},{k:'TGH',v:heroToughness()},
+   {k:'HP',v:hMax},{k:'RGN',v:heroRegen().toFixed(1)+'/s'}].forEach(s=>{
+    const p=el('div','stat-pill');
+    p.innerHTML=`<span class="sk">${s.k}&nbsp;</span><span class="sv">${s.v}</span>`;
+    sr.appendChild(p);
+  });
+
+  // Log + zone progress bar
+  if(a.isBoss){
+    $('#advLog').innerHTML='<span style="color:var(--red)">★ DEFEAT THE BOSS TO ADVANCE THE ZONE!</span>';
+    document.getElementById('zoneBarWrap').className='zone-bar boss-bar';
+    $('#zoneBar').style.width='100%';
+  } else {
+    $('#advLog').innerHTML=`Zone ${a.zone} • ${a.kills} total kills • Zone: ${a.zoneKills}/4 kills until boss`;
+    document.getElementById('zoneBarWrap').className='zone-bar';
+    $('#zoneBar').style.width=(a.zoneKills/4*100)+'%';
+  }
+
+  // Equipped gear slots
+  const gb=$('#gearBox'); gb.innerHTML='';
+  S.adv.gear.forEach((item,i)=>{
+    const d=el('div',item?'gear has-item':'gear');
+    if(item){
+      d.title=`${item.name}\nPWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}\nClick to unequip`;
+      d.innerHTML=`<img src="${sprite(item.isBoss?'trophy':'gear')}"><div class="gear-slot-lbl" style="color:var(--leaf2)">${SLOT_NAMES[i]}</div>`;
+      d.onclick=()=>{S.adv.inventory.push(item);S.adv.gear[i]=null;renderAdv();};
+    } else {
+      d.innerHTML=`<div class="gear-slot-lbl">${SLOT_NAMES[i]}</div>`;
+    }
+    gb.appendChild(d);
+  });
+
+  // Inventory list
+  $('#invCount').textContent=S.adv.inventory.length+'/30';
+  const il=$('#invList'); il.innerHTML='';
+  if(!S.adv.inventory.length){
+    il.innerHTML='<div class="note" style="padding:6px;font-size:15px">No items — defeat enemies for gear drops (20%), or kill bosses for guaranteed drops.</div>';
+    return;
+  }
+  S.adv.inventory.forEach((item,idx)=>{
+    const row=el('div','inv-item'+(item.isBoss?' boss-loot':''));
+    const stats=`PWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}`;
+    row.innerHTML=`<img src="${sprite(item.isBoss?'trophy':'gear')}">
+      <div style="flex:1"><div class="iname">${item.name}
+        <span style="color:var(--dim);font-size:14px">[${SLOT_NAMES[item.slot]}] Z${item.zone}</span></div>
+        <div class="istats">${stats}</div></div>
+      <button class="ieqbtn">EQUIP</button>`;
+    row.querySelector('.ieqbtn').onclick=(e)=>{
+      e.stopPropagation();
+      const old=S.adv.gear[item.slot];
+      S.adv.gear[item.slot]=item;
+      S.adv.inventory.splice(idx,1);
+      if(old) S.adv.inventory.push(old);
+      renderAdv();
+    };
+    il.appendChild(row);
+  });
+}
+
+/* ── Phase D: quests / daily / achievements ──────────────────────────────── */
+function newQuestSlot(){
+  const ti=Math.floor(Math.random()*QTYPES.length);
+  const qt=QTYPES[ti];
+  const delta=qt.deltas[Math.floor(Math.random()*qt.deltas.length)];
+  return {ti, delta, startVal:qt.val()};
+}
+function initQuests(){
+  while(S.quests.slots.length<3) S.quests.slots.push(newQuestSlot());
+}
+function questProg(q){
+  const cur=Math.max(0, Math.min(q.delta, QTYPES[q.ti].val()-q.startVal));
+  return {cur, goal:q.delta, pct:Math.min(100,cur/q.delta*100)};
+}
+function checkAch(){
+  ACHIEVEMENTS.forEach(ac=>{
+    if(!S.ach.includes(ac.id)&&ac.check()){
+      S.ach.push(ac.id);
+      floaty('🏆 '+ac.name);
+    }
+  });
+}
+function renderQuests(){
+  const panel=$('#questPanel'); if(!panel)return;
+  const now=Date.now(), DAY=86400000;
+  const canClaim=(now-S.daily.lastClaim)>=DAY;
+  const rem=Math.max(0,DAY-(now-S.daily.lastClaim));
+  const hrs=Math.floor(rem/3600000), mins=Math.floor((rem%3600000)/60000);
+  const dailyRew=Math.max(50,(S.rebirths+1)*100+(S.daily.streak||0)*25);
+  let html=`<h2>DAILY BONUS</h2>
+  <div class="daily-box">
+    <img src="${sprite('daily')}" style="width:36px;height:36px">
+    ${canClaim
+      ?`<button class="minibtn" style="color:var(--gold)" id="claimDaily">CLAIM +${dailyRew} coins! (streak ${S.daily.streak||0})</button>`
+      :`<span class="note">Next in ${hrs}h ${mins}m &nbsp;•&nbsp; streak: ${S.daily.streak||0}</span>`}
+  </div>
+  <h2>QUESTS — ${S.quests.totalCompleted} completed</h2>`;
+  S.quests.slots.forEach((q,i)=>{
+    const qt=QTYPES[q.ti]; const {cur,goal,pct}=questProg(q);
+    const done=(cur>=goal); const rew=qt.rew(q.delta);
+    const rewStr=[rew.coins?`+${fmt(rew.coins)}🪙`:'',rew.gems?`+${rew.gems}💎`:''].filter(Boolean).join(' ');
+    html+=`<div class="quest-row">
+      <img src="${sprite('quest')}" style="width:28px;height:28px;flex:none">
+      <div class="grow">
+        <div style="font-size:16px">${qt.lbl(q.delta)}
+          <span class="note" style="font-size:13px"> [${rewStr}]</span></div>
+        <div class="bar" style="margin-top:4px"><i style="width:${pct}%;background:linear-gradient(90deg,var(--leaf2),var(--leaf))"></i></div>
+        <div class="note" style="font-size:13px">${fmt(cur)} / ${fmt(goal)}</div>
+      </div>
+      ${done?`<button class="ieqbtn" data-qi="${i}">CLAIM</button>`:`<span style="width:50px"></span>`}
+    </div>`;
+  });
+  html+=`<h2 style="margin-top:12px">ACHIEVEMENTS — ${S.ach.length} / ${ACHIEVEMENTS.length}</h2>`;
+  ACHIEVEMENTS.forEach(ac=>{
+    const done=S.ach.includes(ac.id);
+    html+=`<div class="ach-item ${done?'':'locked'}">
+      <img src="${sprite('trophy')}" style="width:24px;height:24px;flex:none;opacity:${done?1:.25}">
+      <div><div style="color:${done?'var(--gold)':'var(--dim)'}">
+        ${done?'✓ ':''}<b>${ac.name}</b></div>
+        <div class="note" style="font-size:13px">${ac.desc}</div></div>
+    </div>`;
+  });
+  panel.innerHTML=html;
+  const dc=panel.querySelector('#claimDaily');
+  if(dc) dc.onclick=()=>{
+    const wasYest=(now-S.daily.lastClaim)<DAY*2&&S.daily.lastClaim>0;
+    S.daily.streak=(wasYest?S.daily.streak:0)+1;
+    S.daily.lastClaim=now;
+    S.coins+=dailyRew;
+    renderQuests(); renderResBar();
+    floaty(`+${fmt(dailyRew)} coins`);
+  };
+  panel.querySelectorAll('[data-qi]').forEach(btn=>{
+    btn.onclick=()=>{
+      const qi=+btn.dataset.qi; const q=S.quests.slots[qi];
+      const rew=QTYPES[q.ti].rew(q.delta);
+      S.coins+=(rew.coins||0); S.gems+=(rew.gems||0);
+      if(rew.bananas){S.bananas+=rew.bananas;S.totalBananas+=rew.bananas;}
+      S.quests.totalCompleted++;
+      S.quests.slots[qi]=newQuestSlot();
+      renderQuests(); renderResBar();
+      floaty('Quest done! '+[rew.coins?'+'+fmt(rew.coins)+'🪙':'',rew.gems?'+'+rew.gems+'💎':''].filter(Boolean).join(' '));
+    };
+  });
+}
+
+function renderRebirth(){
+  const gain=Math.floor(Math.sqrt(S.totalBananas/TUNE.rebirthDiv));
+  $('#rebirthNote').innerHTML=`Rebirths: <b>${S.rebirths}</b> • Tokens: <span class="tokens">${S.tokens}</span> (+${((tokenMult()-1)*100).toFixed(0)}% all prod)<br>
+    Resets bananas, buildings, NGU & Wandoos. Keeps tokens, gear & adventure progress.<br>
+    Rebirth now for <span class="tokens">+${gain}</span> tokens.
+    ${gain<1?'(need ~'+fmt(TUNE.rebirthDiv)+' total bananas)':''}`;
+}
+
+function renderAll(){
+  renderResBar();renderBldgs();renderNGU();renderWandoos();renderAugs();renderAdv();renderRebirth();renderQuests();
+  $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
+    Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
+    Global mult: <b>×${globalMult().toFixed(2)}</b><br>
+    NGU ×${nguBananaMult().toFixed(2)} • Wandoos ×${wandoosMult().toFixed(2)} • Tokens ×${tokenMult().toFixed(2)}`;
+}
+
+/* mascot mood */
+let lastTap=Date.now(),recentTap=false,tapCombo=0,comboTimer=null;
+function mood(){
+  if(S.adv.hp<heroMaxHp()*0.3&&S.adv.enemyHp>0) return ['harunbe_angry','angry!'];
+  if(recentTap) return ['harunbe_happy','happy :)'];
+  if(Date.now()-lastTap>30000&&bananasPerSec()<1) return ['harunbe_sleep','zzz...'];
+  if(S.rebirths>0) return ['harunbe_evolved','evolved'];
+  if(bananasPerSec()>0) return ['harunbe_work','working'];
+  return ['harunbe_idle','idle'];
+}
+
+function tap(){
+  const amt=S.click*nguClickMult()*tokenMult();
+  S.bananas+=amt; S.totalBananas+=amt; lastTap=Date.now(); recentTap=true;
+  setTimeout(()=>recentTap=false,500);
+  // Combo tracking
+  tapCombo++; if(comboTimer) clearTimeout(comboTimer);
+  comboTimer=setTimeout(()=>{tapCombo=0;},1200);
+  if(tapCombo>=5&&tapCombo%5===0){
+    floaty('COMBO x'+tapCombo+'!','#ff4',14);
+    floaty('+'+fmt(amt*tapCombo*0.1)+'✨','#fff',10); // bonus burst
+    S.bananas+=amt*tapCombo*0.1; S.totalBananas+=amt*tapCombo*0.1;
+  } else {
+    floaty('+'+fmt(amt));
+  }
+  renderResBar();
+}
+function floaty(t,color,size){
+  const f=el('div','floaty'); f.textContent=t;
+  if(color) f.style.color=color;
+  if(size)  f.style.fontSize=size+'px';
+  const m=$('#mascot').getBoundingClientRect();
+  f.style.left=(m.left+m.width/2-10+(Math.random()*50-25))+'px';
+  f.style.top=(m.top+15+(Math.random()*20-10))+'px';
+  document.body.appendChild(f); setTimeout(()=>f.remove(),1000);
+}
+$('#mascot').onclick=tap; $('#tapBtn').onclick=tap;
+
+$('#rebirthBtn').onclick=()=>{
+  const gain=Math.floor(Math.sqrt(S.totalBananas/TUNE.rebirthDiv)); if(gain<1)return;
+  S.tokens+=gain; S.rebirths++; S.bananas=0; S.totalBananas=0;
+  S.gens.forEach(g=>g.n=0);
+  S.ngu.forEach(s=>{s.lvl=0;s.prog=0;s.alloc=0;});
+  S.wandoos.lvl=0; S.wandoos.prog=0; S.wandoos.alloc=0;
+  S.augs=Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100}));
+  S.energy={cap:100,used:0,rate:6}; S.magic={cap:60,used:0,rate:3};
+  S.adv.zoneKills=0; S.adv.isBoss=false;
+  renderAll(); save();
+};
+
+function syncIdleBtn(){ $('#idleE').textContent='Auto-split Energy: '+(S.idleE?'ON':'OFF'); }
+$('#idleE').onclick=()=>{
+  S.idleE=!S.idleE;
+  if(S.idleE){
+    // Zero aug allocs first so they don't double-count energy
+    S.augs.forEach(aug=>{aug.eAug=0;aug.eBoost=0;});
+    const per=Math.floor(S.energy.cap/S.ngu.length); let u=0;
+    S.ngu.forEach(s=>{s.alloc=per;u+=per;}); S.energy.used=u;
+  }
+  syncIdleBtn(); renderNGU(); renderAugs(); renderResBar();
+};
+
+/* tabs */
+const TABS=[['jungle','JUNGLE'],['power','POWER'],['adv','ADVENTURE'],['rebirth','REBIRTH'],['quests','QUESTS']];
+const tabBox=$('#tabs');
+TABS.forEach(([id,lbl],i)=>{
+  const t=el('div','tab'+(i===0?' active':''));
+  t.textContent=lbl;
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelector(`.view[data-view="${id}"]`).classList.add('active');
+  };
+  tabBox.appendChild(t);
+});
+
+/* ====================== TICK LOOP ====================== */
+function tick(dt){
+  // Production
+  S.bananas+=bananasPerSec()*dt; S.totalBananas+=bananasPerSec()*dt;
+  // NGU
+  S.ngu.forEach(s=>{
+    if(s.alloc>0){
+      s.prog+=s.alloc*dt*TUNE.nguRate;
+      while(s.prog>=s.need){s.prog-=s.need;s.lvl++;s.need=Math.floor(s.need*1.25);}
+    }
+  });
+  // Wandoos
+  if(S.wandoos.alloc>0){
+    S.wandoos.prog+=S.wandoos.alloc*dt*TUNE.wandoosRate;
+    while(S.wandoos.prog>=S.wandoos.need){
+      S.wandoos.prog-=S.wandoos.need; S.wandoos.lvl++; S.wandoos.need=Math.floor(S.wandoos.need*1.3);
+    }
+  }
+  // Augments
+  S.augs.forEach(aug=>{
+    if(aug.eAug>0){
+      aug.progAug+=aug.eAug*dt*0.4;
+      while(aug.progAug>=aug.needAug){
+        aug.progAug-=aug.needAug; aug.lvlAug++;
+        aug.needAug=Math.floor(aug.needAug*1.4);
+      }
+    }
+    if(aug.eBoost>0){
+      aug.progBoost+=aug.eBoost*dt*0.15;
+      while(aug.progBoost>=aug.needBoost){
+        aug.progBoost-=aug.needBoost; aug.lvlBoost++;
+        aug.needBoost=Math.floor(aug.needBoost*1.7);
+      }
+    }
+  });
+  // Adventure combat
+  const a=S.adv;
+  const eMax=currentEnemyMaxHp();
+  if(a.enemyHp<=0) a.enemyHp=eMax;
+
+  const tier=getEnemyTier(a.zone);
+  a.enemyHp-=heroPower()*dt*1.2;
+
+  // Toughness reduces incoming damage; boss deals 2× base
+  const rawDmg=Math.max(1,a.zone*1.5)*(tier.dmgMult||1)*(a.isBoss?2:1);
+  const dmgTaken=Math.max(0.1, rawDmg-heroToughness()*0.15);
+  a.hp-=dmgTaken*dt;
+  a.hp=Math.min(heroMaxHp(), a.hp+heroRegen()*dt); // regen
+
+  if(a.enemyHp<=0){
+    a.kills++; a.zoneKills++;
+    S.coins+=a.zone*(a.isBoss?10:3);
+
+    if(a.isBoss){
+      // Boss defeated → gems + guaranteed gear drop + zone advance
+      S.gems+=a.zone; a.bossKills=(a.bossKills||0)+1;
+      const slot=Math.floor(Math.random()*5);
+      if(a.inventory.length<30) a.inventory.push(rollGear(a.zone,slot,true));
+      a.isBoss=false; a.zoneKills=0; a.zone++;
+      a.hp=Math.min(heroMaxHp(), a.hp+heroMaxHp()*0.5); // big victory heal
+    } else {
+      // Normal kill: 20% gear drop
+      if(Math.random()<0.20){
+        const slot=Math.floor(Math.random()*5);
+        if(a.inventory.length<30) a.inventory.push(rollGear(a.zone,slot,false));
+      }
+      if(a.zoneKills>=4) a.isBoss=true; // next enemy is the boss
+      a.hp=Math.min(heroMaxHp(), a.hp+15);
+    }
+    a.enemyHp=currentEnemyMaxHp(); // uses new zone/boss state
+  }
+
+  if(a.hp<=0){
+    a.hp=heroMaxHp();
+    if(a.isBoss){
+      // Retreat from boss — reset boss flag, keep some progress
+      a.isBoss=false; a.zoneKills=Math.max(0,a.zoneKills-1);
+    } else if(a.zone>1){
+      a.zone--; a.zoneKills=0;
+    }
+    a.enemyHp=currentEnemyMaxHp();
+  }
+  if(a.hp>heroMaxHp()) a.hp=heroMaxHp();
+}
+let achAcc=0;
+
+let prev=performance.now(), uiAcc=0;
+function frame(now){
+  const dt=Math.min(0.25,(now-prev)/1000); prev=now;
+  tick(dt); uiAcc+=dt; achAcc+=dt; if(achAcc>3){achAcc=0;checkAch();}
+  const [mspr,mtxt]=mood(); $('#mascot').src=sprite(mspr); $('#mood').textContent=mtxt;
+  if(uiAcc>0.2){
+    uiAcc=0; renderResBar();
+    const av=document.querySelector('.view[data-view="adv"]');
+    if(av.classList.contains('active')) renderAdv();
+    const pv=document.querySelector('.view[data-view="power"]');
+    if(pv.classList.contains('active')){ renderNGU(); renderWandoos(); renderAugs(); }
+    const qv=document.querySelector('.view[data-view="quests"]');
+    if(qv.classList.contains('active')) renderQuests();
+    $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
+      Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
+      Global mult: <b>×${globalMult().toFixed(2)}</b>
+      (NGU ×${nguBananaMult().toFixed(2)} • Wand ×${wandoosMult().toFixed(2)} • Tok ×${tokenMult().toFixed(2)})`;
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ====================== SAVE / LOAD ====================== */
+function save(){
+  try{
+    S.last=Date.now();
+    localStorage.setItem('harunbe_idle',JSON.stringify(S));
+    $('#saveState').textContent='saved '+new Date().toLocaleTimeString();
+  }catch(e){ $('#saveState').textContent='(save disabled)'; }
+}
+
+function load(){
+  try{
+    const d=localStorage.getItem('harunbe_idle'); if(!d)return;
+    const o=JSON.parse(d); Object.assign(S,o);
+
+    // ── Phase B migration: old gear was array of numbers ──
+    if(!Array.isArray(S.adv.gear)||S.adv.gear.length!==5)
+      S.adv.gear=[null,null,null,null,null];
+    S.adv.gear=S.adv.gear.map((g,i)=>{
+      if(typeof g==='number')
+        return {slot:i,name:SLOT_NAMES[i]+' Piece',pwr:g,tgh:0,hth:0,rgn:0,zone:1,isBoss:false};
+      return g; // null or already object
+    });
+    if(!Array.isArray(S.adv.inventory)) S.adv.inventory=[];
+    if(typeof S.adv.zoneKills!=='number') S.adv.zoneKills=0;
+    if(typeof S.adv.isBoss!=='boolean')   S.adv.isBoss=false;
+    // ── Phase D migration ──
+    if(typeof S.adv.bossKills!=='number') S.adv.bossKills=0;
+    if(!S.quests||!Array.isArray(S.quests.slots)) S.quests={slots:[],totalCompleted:0};
+    if(typeof S.quests.totalCompleted!=='number') S.quests.totalCompleted=0;
+    if(!S.daily||typeof S.daily.lastClaim!=='number') S.daily={lastClaim:0,streak:0};
+    if(!Array.isArray(S.ach)) S.ach=[];
+    // ── Phase C migration: add augs if missing ──
+    if(!Array.isArray(S.augs)||S.augs.length!==5)
+      S.augs=Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100}));
+    S.augs=S.augs.map(aug=>({
+      eAug:aug.eAug||0, eBoost:aug.eBoost||0,
+      lvlAug:aug.lvlAug||0, lvlBoost:aug.lvlBoost||0,
+      progAug:aug.progAug||0, progBoost:aug.progBoost||0,
+      needAug:aug.needAug||20, needBoost:aug.needBoost||100,
+    }));
+
+    // Offline progress (cap 8 h)
+    const off=Math.min(8*3600,(Date.now()-(o.last||Date.now()))/1000);
+    const earned=bananasPerSec()*off;
+    S.bananas+=earned; S.totalBananas+=earned;
+    if(off>10) S._offlineMsg='Away '+Math.floor(off/60)+'m '+Math.floor(off%60)+'s → +'+fmt(earned)+' 🍌';
+  }catch(e){}
+}
+
+load();
+initQuests();
+syncIdleBtn();
+if(S._offlineMsg){ $('#saveState').textContent=S._offlineMsg; delete S._offlineMsg; }
+renderAll();
+requestAnimationFrame(frame);
+setInterval(save,10000);
+window.addEventListener('beforeunload',save);
+
+/* ── PWA: register service worker ──────────────────────────────────────── */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js')
+    .then(r=>console.log('[SW] registered, scope:',r.scope))
+    .catch(e=>console.warn('[SW] registration failed:',e));
+}
+</script>
+</body>
+</html>
