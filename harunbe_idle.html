@@ -161,13 +161,13 @@ h1{
   <!-- POWER -->
   <div class="view" data-view="power">
     <div class="panel">
-      <h2>ENERGY → NGU (number go up)</h2>
+      <h2>ENERGY → NP (NUMBER PROGRESS)</h2>
       <div class="note">Pour Energy into slots for a <b>permanent</b> banana multiplier.</div>
       <div class="minirow"><button class="minibtn" id="idleE">Auto-split Energy: OFF</button></div>
       <div id="nguSlots" style="margin-top:8px"></div>
     </div>
     <div class="panel">
-      <h2>MAGIC → WANDOOS CORE</h2>
+      <h2>MAGIC → MAGIC SYSTEM</h2>
       <div class="note">Allocated Magic slowly grows a global production multiplier.</div>
       <div id="wandoos" style="margin-top:8px"></div>
     </div>
@@ -222,6 +222,11 @@ h1{
     <div class="panel" id="questPanel"></div>
   </div>
 
+  <!-- SHOP -->
+  <div class="view" data-view="shop">
+    <div class="panel" id="shopPanel"></div>
+  </div>
+
   <div class="foot">
     auto-saves locally • <span id="saveState"></span> &nbsp;|&nbsp; <span class="kbd">REAL_SPRITES</span> block = sprite swap point
   </div>
@@ -241,6 +246,9 @@ const REAL_SPRITES = {
   // quest:"sprites/quest.png",
   // daily:"sprites/daily.png",
   // click_fx:"sprites/click_fx.png",
+  // shop:"sprites/shop.png",      ← treasure chest, unlocked shop tab icon
+  // potion:"sprites/potion.png",  ← red vial, timed boost items
+  // shield:"sprites/shield.png",  ← kite shield, permanent stat upgrades
 };
 
 /* ── PROGRESSION TUNING ────────────────────────────────────────────────────
@@ -374,6 +382,50 @@ const I_CLICK_FX=[
   "............",
 ];
 
+/* Phase F — shop / boost / stat sprites */
+const I_SHOP=[
+  "....yyyy....",
+  "...yYYYYy...",
+  "..yYYYYYYy..",
+  ".yYWYYYYWYy.",
+  "..yYYYYYYy..",
+  "...kkkkkk...",
+  "..kKKKKKKk..",
+  "..kKyyyKKk..",
+  "..kKKKKKKk..",
+  "...kkkkkk...",
+  "............",
+  "............",
+];
+const I_POTION=[
+  ".....KK.....",
+  "....KWWK....",
+  "....RRRR....",
+  "...RRrRRR...",
+  "...RRrrRR...",
+  "..RRRrrRRR..",
+  "..RRRRRRRr..",
+  "..RRRrRRRr..",
+  "...RRRRRRr..",
+  "....RRRRr...",
+  ".....rrrr...",
+  "............",
+];
+const I_SHIELD=[
+  "..KKKKKKKK..",
+  ".KkKKKKKkK..",
+  ".KkKKKKKkK..",
+  ".KkKWWWKkK..",
+  ".KkKWYWKkK..",
+  ".KkKWWWKkK..",
+  ".KkKKKKKkK..",
+  "..KkKKKkK...",
+  "...KkKkK....",
+  "....KkK.....",
+  ".....K......",
+  "............",
+];
+
 /* Phase C — augment crystal sprite */
 const I_AUGMENT=[
   "....mmmm....",
@@ -408,6 +460,7 @@ const PH={
   boss:px(I_BOSS,P,7), trophy:px(I_TROPHY,P,6),
   augment:px(I_AUGMENT,P,6),
   quest:px(I_QUEST,P,6),  daily:px(I_DAILY,P,6),  click_fx:px(I_CLICK_FX,P,6),
+  shop:px(I_SHOP,P,6), potion:px(I_POTION,P,6), shield:px(I_SHIELD,P,6),
 };
 function sprite(name){ return REAL_SPRITES[name]||PH[name]||PH.up; }
 
@@ -460,7 +513,56 @@ const ACHIEVEMENTS=[
   {id:'quest10',     name:'Quest Seeker',  desc:'Complete 10 quests',               check:()=>(S.quests&&S.quests.totalCompleted>=10)},
   {id:'aug10',       name:'Augmented',     desc:'Reach augment level 10',           check:()=>S.augs.some(a=>a.lvlAug>=10)},
   {id:'daily3',      name:'Regular',       desc:'Claim 3-day daily streak',         check:()=>(S.daily&&S.daily.streak>=3)},
-  {id:'ngu20',       name:'NGU Surge',     desc:'Any NGU slot reach level 20',      check:()=>S.ngu.some(s=>s.lvl>=20)},
+  {id:'ngu20',       name:'NP Surge',      desc:'Any NP slot reach level 20',       check:()=>S.ngu.some(s=>s.lvl>=20)},
+];
+
+/* Phase F — shop item definitions */
+const SHOP_ITEMS=[
+  // ── Timed boosts ──────────────────────────────────────────────────────────
+  {id:'prod2x',    name:'Jungle Surge',   icon:'potion', type:'timed',
+   desc:'×2 all banana production for 2 minutes',
+   cost:()=>({c:10,g:0}),   timeField:'prod2xEnds',  dur:120},
+  {id:'prod4x',    name:'Power Surge',    icon:'potion', type:'timed',
+   desc:'×4 all banana production for 2 min (2² bonus)',
+   cost:()=>({c:100,g:0}),  timeField:'prod4xEnds',  dur:120},
+  {id:'advBoost',  name:'Battle Tonic',   icon:'potion', type:'timed',
+   desc:'×10 all combat stats for 5 minutes',
+   cost:()=>({c:50,g:0}),   timeField:'advBoostEnds',dur:300},
+  // ── Permanent adventure stats ──────────────────────────────────────────────
+  {id:'permPwr',   name:'Power Rune',     icon:'shield', type:'perm',
+   desc:'Permanent +1 hero power',
+   cost:()=>({c:20+(S.shop.permPwrBuys||0)*15,g:0}),
+   buy:()=>{S.shop.permPwr++;S.shop.permPwrBuys++;}},
+  {id:'permTgh',   name:'Iron Rune',      icon:'shield', type:'perm',
+   desc:'Permanent +1 toughness',
+   cost:()=>({c:20+(S.shop.permTghBuys||0)*15,g:0}),
+   buy:()=>{S.shop.permTgh++;S.shop.permTghBuys++;}},
+  {id:'permHth',   name:'Vitality Rune',  icon:'shield', type:'perm',
+   desc:'Permanent +15 max HP',
+   cost:()=>({c:20+(S.shop.permHthBuys||0)*15,g:0}),
+   buy:()=>{S.shop.permHth+=15;S.shop.permHthBuys++;}},
+  {id:'permRgn',   name:'Mending Rune',   icon:'shield', type:'perm',
+   desc:'Permanent +0.5 HP regen/s',
+   cost:()=>({c:30+(S.shop.permRgnBuys||0)*20,g:0}),
+   buy:()=>{S.shop.permRgn+=0.5;S.shop.permRgnBuys++;}},
+  {id:'permAug',   name:'Boost Crystal',  icon:'augment',type:'perm',
+   desc:'Permanent +10% augment boost power',
+   cost:()=>({c:40+(S.shop.permAugBuys||0)*25,g:0}),
+   buy:()=>{S.shop.permAugBoost++;S.shop.permAugBuys++;}},
+  // ── Gem purchases ──────────────────────────────────────────────────────────
+  {id:'magicCap',  name:'Magic Shard',    icon:'core',   type:'perm',
+   desc:'Permanent +10 magic cap',
+   cost:()=>({c:0,g:5}),
+   buy:()=>{S.magic.cap+=10;S.shop.magicBuys++;}},
+  // ── Bonus items ────────────────────────────────────────────────────────────
+  {id:'energyCap', name:'Energy Shard',   icon:'ngu',    type:'perm',
+   desc:'Permanent +20 energy cap',
+   cost:()=>({c:10,g:0}),
+   buy:()=>{S.energy.cap+=20;S.shop.energyBuys++;}},
+  {id:'clickCharm',name:'Tap Charm',      icon:'click_fx',type:'perm',
+   desc:'Permanent +1 click power',
+   cost:()=>({c:15+(S.shop.clickBuys||0)*10,g:0}),
+   buy:()=>{S.click++;S.shop.clickBuys++;}},
 ];
 
 /* ====================== GAME STATE ====================== */
@@ -492,6 +594,12 @@ const S={
   daily:{lastClaim:0,streak:0},
   ach:[],
   rebirths:0, tokens:0, last:Date.now(),
+  shop:{
+    prod2xEnds:0, prod4xEnds:0, advBoostEnds:0,
+    permPwr:0, permTgh:0, permHth:0, permRgn:0, permAugBoost:0,
+    magicBuys:0, energyBuys:0, clickBuys:0,
+    permPwrBuys:0, permTghBuys:0, permHthBuys:0, permRgnBuys:0, permAugBuys:0,
+  },
 };
 
 /* ── Derived functions ────────────────────────────────────────────────────── */
@@ -500,7 +608,7 @@ function augStat(key){
   let t=0;
   AUGS.forEach((def,i)=>{
     const aug=S.augs[i]; if(!aug||aug.lvlAug===0) return;
-    const bm=1+aug.lvlBoost*0.5;
+    const bm=1+aug.lvlBoost*0.5+(S.shop.permAugBoost||0)*0.1;
     if(def.stat===key)       t+=aug.lvlAug*def.perLvl*bm;
     if(def.stat==='all')     t+=aug.lvlAug*def.perLvl*bm;
   });
@@ -510,11 +618,16 @@ function nguBananaMult(){ return (1+S.ngu[0].lvl*0.08)*(1+S.ngu[2].lvl*0.05); }
 function nguClickMult(){ return 1+S.ngu[1].lvl*0.15; }
 function wandoosMult(){ return 1+S.wandoos.lvl*0.04; }
 function tokenMult(){ return 1+S.tokens*0.10; }
-function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult(); }
-function heroPower(){ return 5+S.rebirths*3+equippedStat('pwr')+Math.floor(S.ngu[2].lvl*1.5)+Math.floor(augStat('pwr')); }
-function heroToughness(){ return equippedStat('tgh')+Math.floor(augStat('tgh')); }
-function heroMaxHp(){ return 50+S.adv.zone*10+S.rebirths*15+equippedStat('hth')+Math.floor(augStat('hth')); }
-function heroRegen(){ return equippedStat('rgn')*0.5+augStat('rgn'); }
+function shopProdMult(){
+  const n=Date.now();
+  return (S.shop.prod2xEnds>n?2:1)*(S.shop.prod4xEnds>n?4:1);
+}
+function shopAdvMult(){ return S.shop.advBoostEnds>Date.now()?10:1; }
+function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult(); }
+function heroPower(){    return 5+S.rebirths*3+equippedStat('pwr')+Math.floor(S.ngu[2].lvl*1.5)+Math.floor(augStat('pwr'))+(S.shop.permPwr||0); }
+function heroToughness(){ return equippedStat('tgh')+Math.floor(augStat('tgh'))+(S.shop.permTgh||0); }
+function heroMaxHp(){    return 50+S.adv.zone*10+S.rebirths*15+equippedStat('hth')+Math.floor(augStat('hth'))+(S.shop.permHth||0); }
+function heroRegen(){    return equippedStat('rgn')*0.5+augStat('rgn')+(S.shop.permRgn||0); }
 function getEnemyTier(zone){ let t=ENEMY_TIERS[0]; ENEMY_TIERS.forEach(e=>{if(zone>=e.minZone)t=e;}); return t; }
 function enemyBaseHp(zone){ return Math.floor(18*Math.pow(1.35,zone-1)); }
 function currentEnemyMaxHp(){
@@ -612,7 +725,7 @@ function renderWandoos(){
   const w=S.wandoos;
   const a=el('div','alloc');
   a.innerHTML=`<img src="${sprite('core')}">
-    <div class="grow"><div>Wandoos Core — <span style="color:var(--leaf)">Lv ${w.lvl}</span>
+    <div class="grow"><div>Magic System — <span style="color:var(--leaf)">Lv ${w.lvl}</span>
     <span class="note">(+${((wandoosMult()-1)*100).toFixed(0)}% all) • ${fmt(w.alloc)} magic</span></div>
     <div class="bar m"><i style="width:${Math.min(100,w.prog/w.need*100)}%"></i></div>
     <div class="minirow"></div></div>`;
@@ -843,20 +956,97 @@ function renderQuests(){
   });
 }
 
+function renderShop(){
+  const panel=$('#shopPanel'); if(!panel)return;
+  if(S.rebirths<3){
+    panel.innerHTML=`<h2>SHOP 🏪 — LOCKED</h2>
+      <div style="text-align:center;padding:18px 0">
+        <img src="${sprite('shop')}" style="width:64px;height:64px;opacity:.45">
+        <div class="note" style="margin-top:10px">The jungle merchant only deals with<br>experienced adventurers.<br><br>
+        <span style="color:var(--gold)">Unlock at 3 Rebirths</span><br>
+        Current rebirths: <b style="color:var(--leaf)">${S.rebirths}</b> / 3</div>
+      </div>`;
+    return;
+  }
+  const now=Date.now();
+  function timerStr(ends){
+    if(!ends||ends<=now) return '<span style="color:var(--dim);font-size:12px"> (inactive)</span>';
+    const s=Math.ceil((ends-now)/1000);
+    return ` <span style="color:var(--leaf);font-size:13px">[${Math.floor(s/60)}m ${s%60}s left]</span>`;
+  }
+  const p2=S.shop.prod2xEnds>now, p4=S.shop.prod4xEnds>now, ab=S.shop.advBoostEnds>now;
+  let html=`<h2>SHOP 🏪</h2>
+  <div class="note" style="margin-bottom:8px">
+    Coins: <span style="color:var(--gold)">${fmt(S.coins)} 🪙</span> &nbsp;•&nbsp;
+    Gems: <span style="color:var(--blue)">${S.gems} 💎</span>
+  </div>`;
+  if(p2||p4||ab){
+    html+=`<div class="daily-box" style="border-color:var(--leaf);margin-bottom:8px">
+      <img src="${sprite('potion')}" style="width:28px;height:28px">
+      <span style="color:var(--leaf)">⚡ ACTIVE BOOSTS: </span>
+      ${p2?`<span style="color:var(--gold)">Surge ×2${timerStr(S.shop.prod2xEnds)}</span> `:''}
+      ${p4?`<span style="color:var(--gold)">Surge ×4${timerStr(S.shop.prod4xEnds)}</span> `:''}
+      ${ab?`<span style="color:var(--red)">Battle Tonic ×10${timerStr(S.shop.advBoostEnds)}</span>`:''}
+    </div>`;
+  }
+  html+=`<div style="display:grid;gap:6px">`;
+  SHOP_ITEMS.forEach(item=>{
+    const {c,g}=item.cost();
+    const canAfford=(c===0||S.coins>=c)&&(g===0||S.gems>=g);
+    const costStr=(c>0?`${fmt(c)} 🪙`:'')+((c>0&&g>0)?' + ':'')+( g>0?`${g} 💎`:'');
+    let extra='';
+    if(item.type==='timed') extra=timerStr(S.shop[item.timeField]||0);
+    html+=`<div class="quest-row">
+      <img src="${sprite(item.icon)}" style="width:34px;height:34px;flex:none">
+      <div class="grow">
+        <div style="font-size:17px">${item.name}${extra}</div>
+        <div class="note" style="font-size:13px">${item.desc}</div>
+      </div>
+      <div style="text-align:right;flex:none;min-width:70px">
+        <div style="color:${canAfford?'var(--gold)':'var(--red)'};font-size:14px">${costStr}</div>
+        <button class="ieqbtn" data-shopid="${item.id}"
+          style="margin-top:4px;${canAfford?'':'opacity:.45;pointer-events:none'}">BUY</button>
+      </div>
+    </div>`;
+  });
+  html+=`</div>`;
+  panel.innerHTML=html;
+  panel.querySelectorAll('[data-shopid]').forEach(btn=>{
+    const item=SHOP_ITEMS.find(x=>x.id===btn.dataset.shopid);
+    if(!item) return;
+    btn.onclick=()=>{
+      const {c,g}=item.cost();
+      if(c>0&&S.coins<c){ floaty('Not enough coins!','var(--red)'); return; }
+      if(g>0&&S.gems<g){  floaty('Not enough gems!','var(--blue)'); return; }
+      if(c>0) S.coins-=c;
+      if(g>0) S.gems-=g;
+      if(item.type==='timed'){
+        const cur=S.shop[item.timeField]||0;
+        S.shop[item.timeField]=Math.max(Date.now(),cur)+item.dur*1000;
+        floaty(item.name+'! '+Math.floor(item.dur/60)+'m','#ff4',13);
+      } else {
+        item.buy();
+        floaty(item.name+'!','var(--leaf)',13);
+      }
+      renderShop(); renderResBar();
+    };
+  });
+}
+
 function renderRebirth(){
   const gain=Math.floor(Math.sqrt(S.totalBananas/TUNE.rebirthDiv));
   $('#rebirthNote').innerHTML=`Rebirths: <b>${S.rebirths}</b> • Tokens: <span class="tokens">${S.tokens}</span> (+${((tokenMult()-1)*100).toFixed(0)}% all prod)<br>
-    Resets bananas, buildings, NGU & Wandoos. Keeps tokens, gear & adventure progress.<br>
+    Resets bananas, buildings, NP & Magic System. Keeps tokens, gear &amp; adventure progress.<br>
     Rebirth now for <span class="tokens">+${gain}</span> tokens.
     ${gain<1?'(need ~'+fmt(TUNE.rebirthDiv)+' total bananas)':''}`;
 }
 
 function renderAll(){
-  renderResBar();renderBldgs();renderNGU();renderWandoos();renderAugs();renderAdv();renderRebirth();renderQuests();
+  renderResBar();renderBldgs();renderNGU();renderWandoos();renderAugs();renderAdv();renderShop();renderRebirth();renderQuests();
   $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
     Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
     Global mult: <b>×${globalMult().toFixed(2)}</b><br>
-    NGU ×${nguBananaMult().toFixed(2)} • Wandoos ×${wandoosMult().toFixed(2)} • Tokens ×${tokenMult().toFixed(2)}`;
+    NP ×${nguBananaMult().toFixed(2)} • Magic ×${wandoosMult().toFixed(2)} • Tokens ×${tokenMult().toFixed(2)} • Shop ×${shopProdMult()}`;
 }
 
 /* mascot mood */
@@ -922,7 +1112,7 @@ $('#idleE').onclick=()=>{
 };
 
 /* tabs */
-const TABS=[['jungle','JUNGLE'],['power','POWER'],['adv','ADVENTURE'],['rebirth','REBIRTH'],['quests','QUESTS']];
+const TABS=[['jungle','JUNGLE'],['power','POWER'],['adv','ADVENTURE'],['rebirth','REBIRTH'],['quests','QUESTS'],['shop','SHOP 🏪']];
 const tabBox=$('#tabs');
 TABS.forEach(([id,lbl],i)=>{
   const t=el('div','tab'+(i===0?' active':''));
@@ -932,6 +1122,7 @@ TABS.forEach(([id,lbl],i)=>{
     document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     document.querySelector(`.view[data-view="${id}"]`).classList.add('active');
+    if(id==='shop') renderShop();
   };
   tabBox.appendChild(t);
 });
@@ -977,13 +1168,14 @@ function tick(dt){
   if(a.enemyHp<=0) a.enemyHp=eMax;
 
   const tier=getEnemyTier(a.zone);
-  a.enemyHp-=heroPower()*dt*1.2;
+  const sm=shopAdvMult(); // Battle Tonic multiplier (1 normally, 10 when active)
+  a.enemyHp-=heroPower()*sm*dt*1.2;
 
   // Toughness reduces incoming damage; boss deals 2× base
   const rawDmg=Math.max(1,a.zone*1.5)*(tier.dmgMult||1)*(a.isBoss?2:1);
-  const dmgTaken=Math.max(0.1, rawDmg-heroToughness()*0.15);
+  const dmgTaken=Math.max(0.1, rawDmg-heroToughness()*sm*0.15);
   a.hp-=dmgTaken*dt;
-  a.hp=Math.min(heroMaxHp(), a.hp+heroRegen()*dt); // regen
+  a.hp=Math.min(heroMaxHp(), a.hp+heroRegen()*sm*dt); // regen
 
   if(a.enemyHp<=0){
     a.kills++; a.zoneKills++;
@@ -1035,10 +1227,12 @@ function frame(now){
     if(pv.classList.contains('active')){ renderNGU(); renderWandoos(); renderAugs(); }
     const qv=document.querySelector('.view[data-view="quests"]');
     if(qv.classList.contains('active')) renderQuests();
+    const sv=document.querySelector('.view[data-view="shop"]');
+    if(sv&&sv.classList.contains('active')) renderShop();
     $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
       Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
       Global mult: <b>×${globalMult().toFixed(2)}</b>
-      (NGU ×${nguBananaMult().toFixed(2)} • Wand ×${wandoosMult().toFixed(2)} • Tok ×${tokenMult().toFixed(2)})`;
+      (NP ×${nguBananaMult().toFixed(2)} • Magic ×${wandoosMult().toFixed(2)} • Tok ×${tokenMult().toFixed(2)} • Shop ×${shopProdMult()})`;
   }
   requestAnimationFrame(frame);
 }
@@ -1083,6 +1277,16 @@ function load(){
       progAug:aug.progAug||0, progBoost:aug.progBoost||0,
       needAug:aug.needAug||20, needBoost:aug.needBoost||100,
     }));
+
+    // ── Shop migration ──
+    const _shopDef={
+      prod2xEnds:0,prod4xEnds:0,advBoostEnds:0,
+      permPwr:0,permTgh:0,permHth:0,permRgn:0,permAugBoost:0,
+      magicBuys:0,energyBuys:0,clickBuys:0,
+      permPwrBuys:0,permTghBuys:0,permHthBuys:0,permRgnBuys:0,permAugBuys:0,
+    };
+    if(!S.shop||typeof S.shop!=='object') S.shop={};
+    S.shop=Object.assign({},_shopDef,S.shop);
 
     // Offline progress (cap 8 h)
     const off=Math.min(8*3600,(Date.now()-(o.last||Date.now()))/1000);
