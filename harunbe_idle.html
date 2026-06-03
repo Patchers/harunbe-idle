@@ -768,7 +768,7 @@ function renderBldgs(){
 
 function renderNGU(){
   const box=$('#nguSlots'); box.innerHTML='';
-  const mineBonus=S.mines.energy>0?` • +🏭${((2 + S.rebirths * 0.05) * S.mines.energy).toFixed(1)} energy/s`:'';
+  const mineBonus=S.mines.energy>0?` • 🏭+${((2 + S.rebirths * 0.05) * S.mines.energy / S.ngu.length).toFixed(1)}/s`:'';
   S.ngu.forEach(slot=>{
     const a=el('div','alloc');
     a.innerHTML=`<img src="${sprite('ngu')}">
@@ -794,7 +794,7 @@ function renderNGU(){
 function renderWandoos(){
   const box=$('#wandoos'); box.innerHTML='';
   const w=S.wandoos;
-  const mineBonus=S.mines.magic>0?` • +🏭${((3 + S.rebirths * 0.05) * S.mines.magic).toFixed(1)} magic/s`:'';
+  const mineBonus=S.mines.magic>0?` • 🏭+${((3 + S.rebirths * 0.05) * S.mines.magic).toFixed(1)}/s`:'';
   const a=el('div','alloc');
   a.innerHTML=`<img src="${sprite('core')}">
     <div class="grow"><div>Magic System — <span style="color:var(--leaf)">Lv ${w.lvl}</span>
@@ -1280,13 +1280,19 @@ function tick(dt){
   }
   // Energy Mines — add directly to energy pool
   if(S.mines.energy>0){
-    const energyPerSecond = (2 + S.rebirths * 0.05) * S.mines.energy; // 2 base + 0.05 per rebirth per mine
-    S.energy = Math.min(S.energy + energyPerSecond * dt, S.energyCap);
+    const drip = (2 + S.rebirths * 0.05) * S.mines.energy; // 2 base + 0.05/rebirth per mine
+    S.ngu.forEach(s=>{
+      s.prog += (drip / S.ngu.length) * dt;
+      while(s.prog >= s.need){s.prog -= s.need; s.lvl++; s.need = Math.floor(s.need * 1.10);}
+    });
   }
-  // Magic Mines — add directly to magic pool
+  // Magic Mines — directly drive Magic System progress (bypasses cap)
   if(S.mines.magic>0){
-    const magicPerSecond = (3 + S.rebirths * 0.05) * S.mines.magic; // 3 base + 0.05 per rebirth per mine
-    S.magic = Math.min(S.magic + magicPerSecond * dt, S.magicCap);
+    const drip = (3 + S.rebirths * 0.05) * S.mines.magic; // 3 base + 0.05/rebirth per mine
+    S.wandoos.prog += drip * dt;
+    while(S.wandoos.prog >= S.wandoos.need){
+      S.wandoos.prog -= S.wandoos.need; S.wandoos.lvl++; S.wandoos.need = Math.floor(S.wandoos.need * 1.10);
+    }
   }
   // Augments
   S.augs.forEach(aug=>{
