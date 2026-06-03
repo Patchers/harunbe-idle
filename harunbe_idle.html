@@ -653,6 +653,7 @@ const S={
   mines:{energy:0,magic:0},
   offlineTier:0,
   bestCombo:0, totalTaps:0,
+  pomodoro:{potions:0, active:false, startMs:0, boostEnds:0, boostMult:1},
   shop:{
     prod2xEnds:0, prod4xEnds:0, advBoostEnds:0,
     permPwr:0, permTgh:0, permHth:0, permRgn:0, permAugBoost:0,
@@ -682,7 +683,8 @@ function shopProdMult(){
   return (S.shop.prod2xEnds>n?2:1)*(S.shop.prod4xEnds>n?4:1);
 }
 function shopAdvMult(){ return S.shop.advBoostEnds>Date.now()?10:1; }
-function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult(); }
+function potionMult(){ return (S.pomodoro&&Date.now()<(S.pomodoro.boostEnds||0))?(S.pomodoro.boostMult||1):1; }
+function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult()*potionMult(); }
 function heroPower(){    return 5+S.rebirths*3+equippedStat('pwr')+Math.floor(S.ngu[2].lvl*1.5)+Math.floor(augStat('pwr'))+(S.shop.permPwr||0); }
 function heroToughness(){ return equippedStat('tgh')+Math.floor(augStat('tgh'))+(S.shop.permTgh||0); }
 function heroMaxHp(){    return 50+S.adv.zone*10+S.rebirths*15+equippedStat('hth')+Math.floor(augStat('hth'))+(S.shop.permHth||0); }
@@ -1093,6 +1095,38 @@ function renderShop(){
     Total taps: <span style="color:var(--leaf)">${fmt(S.totalTaps||0)}</span> &nbsp;•&nbsp;
     Offline rate: <span style="color:var(--blue)">${S.offlineTier>0?OFFLINE_TIERS[S.offlineTier-1].pct+'%':'5% (base)'}</span>
   </div>`;
+
+  // Pomodoro section
+  const pom=S.pomodoro||{};
+  const pomActive=pom.active&&pom.startMs;
+  const pomElapsed=pomActive?Math.min(Date.now()-pom.startMs,25*60*1000):0;
+  const pomSecs=pomActive?Math.max(0,Math.ceil((25*60*1000-(Date.now()-pom.startMs))/1000)):0;
+  const pomSecsDisp=`${Math.floor(pomSecs/60)}m ${pomSecs%60}s`;
+  const potions=pom.potions||0;
+  const potionMults=[0,2,4,7,10];
+  const potionBoostMult=potionMults[Math.min(potions,4)];
+  const boostActive=pom.boostEnds&&Date.now()<pom.boostEnds;
+  const boostLeft=boostActive?Math.max(0,Math.ceil((pom.boostEnds-Date.now())/1000)):0;
+  const pomBarW=pomActive?Math.min(100,Math.round(pomElapsed/(25*600)))+'%':'0%';
+  html+=`<div class="daily-box" style="border-color:var(--blue);margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:20px">🍅</span>
+      <span style="color:var(--blue);font-family:var(--font);font-size:15px">POMODORO MODE</span>
+      <span class="note" style="margin-left:auto">🧪 ${potions}/4 potions</span>
+    </div>
+    ${boostActive?`<div style="color:var(--leaf);margin-bottom:6px">⚡ POTION ACTIVE ×${pom.boostMult||1} — ${Math.floor(boostLeft/60)}m ${boostLeft%60}s left</div>`:''}
+    ${pomActive?`
+      <div class="note" style="margin-bottom:4px">Stay idle — <span style="color:var(--leaf)">${pomSecsDisp} remaining</span> (tap = reset timer)</div>
+      <div class="bar e" style="margin-bottom:8px"><i style="width:${pomBarW};background:var(--blue)"></i></div>
+    `:`<div class="note" style="margin-bottom:6px">Start a 25-min idle session to earn potions 🧪</div>`}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="startPomodoro()" style="flex:1">${pomActive?'⏹ CANCEL':'▶ START POMODORO'}</button>
+      ${potions>0&&!boostActive?`<button onclick="activatePotion()" style="flex:1;background:var(--blue)">🧪 ACTIVATE ×${potionBoostMult} (${potions} potions)</button>`:''}
+      ${potions===0&&!boostActive?`<button disabled style="flex:1;opacity:.4">🧪 No potions yet</button>`:''}
+    </div>
+    <div class="note" style="margin-top:6px;font-size:12px">1🧪=×2 &nbsp; 2🧪=×4 &nbsp; 3🧪=×7 &nbsp; 4🧪=×10 &nbsp;(5 min boost)</div>
+  </div>`;
+
   SHOP_ITEMS.forEach(item=>{
     const {c,g}=item.cost();
     const isMaxed=c===0&&g===0&&item.id==='offline'&&S.offlineTier>=OFFLINE_TIERS.length;
@@ -1156,6 +1190,7 @@ function renderAll(){
 
 /* mascot mood */
 let lastTap=Date.now(),recentTap=false,tapCombo=0,comboTimer=null;
+let pomLastInteract=Date.now(); // tracks any game interaction for pomodoro
 const COMBO_RESET_MS=3000; // 3 s window — keeps combo alive with casual tapping
 function mood(){
   if(S.adv.hp<heroMaxHp()*0.3&&S.adv.enemyHp>0) return ['harunbe_angry','angry!'];
@@ -1170,6 +1205,7 @@ function tap(){
   const amt=S.click*nguClickMult()*tokenMult();
   S.bananas+=amt; S.totalBananas+=amt; lastTap=Date.now(); recentTap=true;
   S.totalTaps=(S.totalTaps||0)+1;
+  pomLastInteract=Date.now(); // any tap cancels/tracks pomodoro interaction
   setTimeout(()=>recentTap=false,500);
 
   // Combo tracking — 3 s window
@@ -1178,36 +1214,53 @@ function tap(){
   if(comboTimer) clearTimeout(comboTimer);
   comboTimer=setTimeout(()=>{tapCombo=0;},COMBO_RESET_MS);
 
-  // Milestone bonuses (fire once when threshold crossed)
   let milestoneFired=false;
-  COMBO_MILESTONES.forEach(m=>{
-    if(prevCombo<m.at&&tapCombo>=m.at){
-      const bonus=amt*m.mult;
-      S.bananas+=bonus; S.totalBananas+=bonus;
-      floaty(m.label+'!','#ff4',15);
-      floaty('×'+fmt(m.mult)+' BONUS','#fff',11);
-      floaty('+'+fmt(bonus)+'🔥','var(--gold)',10);
-      milestoneFired=true;
-    }
-  });
-  // Every 1000 taps above 3000 keeps rewarding
-  if(!milestoneFired&&tapCombo>=3000&&tapCombo%1000===0){
-    const bonus=amt*5000;
+
+  // ── ULTRA COMBO: every 100 taps, scales by milestone count ──────────────────
+  if(tapCombo>=100 && tapCombo%100===0){
+    const stack=tapCombo/100; // 100=1×, 200=2×, 300=3×...
+    const ultraMult=100*stack;
+    const bonus=amt*ultraMult;
     S.bananas+=bonus; S.totalBananas+=bonus;
-    floaty('ENDLESS x5000!','#ff4',15);
-    floaty('+'+fmt(bonus)+'🔥','var(--gold)',10);
+    floaty('⚡ ULTRA ×'+ultraMult+'!','#f80',17);
+    floaty('+'+fmt(bonus)+'💥','var(--gold)',12);
     milestoneFired=true;
   }
-  // Small every-5-tap micro-burst
+  // ── BASIC COMBO: every 25 taps (but not on 100-tap ultra) ───────────────────
+  else if(tapCombo>=25 && tapCombo%25===0){
+    const bonus=amt*10;
+    S.bananas+=bonus; S.totalBananas+=bonus;
+    floaty('COMBO ×10!','#ff4',13);
+    floaty('+'+fmt(bonus),'var(--gold)',10);
+    milestoneFired=true;
+  }
+  // ── Micro-burst every 5 taps ────────────────────────────────────────────────
   if(!milestoneFired&&tapCombo>=5&&tapCombo%5===0){
-    const burst=amt*tapCombo*0.1;
+    const burst=amt*tapCombo*0.05;
     S.bananas+=burst; S.totalBananas+=burst;
-    if(tapCombo%25===0) floaty('COMBO x'+tapCombo,'#ff4',12);
-    else floaty('+'+fmt(amt));
+    floaty('+'+fmt(amt));
   } else if(!milestoneFired){
     floaty('+'+fmt(amt));
   }
   renderResBar();
+}
+function startPomodoro(){
+  pomLastInteract=Date.now();
+  if(!S.pomodoro) S.pomodoro={potions:0,active:false,startMs:0,boostEnds:0,boostMult:1};
+  if(S.pomodoro.active){ S.pomodoro.active=false; floaty('🍅 Pomodoro cancelled','#f44',13); }
+  else { S.pomodoro.active=true; S.pomodoro.startMs=Date.now(); pomLastInteract=Date.now(); floaty('🍅 Pomodoro started! Stay idle for 25min','#0af',13); }
+  renderShop();
+}
+function activatePotion(){
+  if(!S.pomodoro||!S.pomodoro.potions) return;
+  pomLastInteract=Date.now();
+  const mults=[0,2,4,7,10];
+  const m=mults[Math.min(S.pomodoro.potions,4)];
+  S.pomodoro.boostMult=m;
+  S.pomodoro.boostEnds=Date.now()+5*60*1000; // 5 min boost
+  S.pomodoro.potions=0;
+  floaty('🧪 POTION! ×'+m+' for 5 min!','#0af',16);
+  renderShop();
 }
 function floaty(t,color,size){
   const f=el('div','floaty'); f.textContent=t;
@@ -1292,6 +1345,22 @@ function tick(dt){
     S.wandoos.prog += drip * dt;
     while(S.wandoos.prog >= S.wandoos.need){
       S.wandoos.prog -= S.wandoos.need; S.wandoos.lvl++; S.wandoos.need = Math.floor(S.wandoos.need * 1.10);
+    }
+  }
+  // Pomodoro — check for completion (25 min idle)
+  if(S.pomodoro&&S.pomodoro.active){
+    const elapsed=Date.now()-S.pomodoro.startMs;
+    const interacted=pomLastInteract>S.pomodoro.startMs;
+    if(interacted){
+      // Interaction detected — cancel this session, reset timer
+      S.pomodoro.startMs=Date.now();
+      pomLastInteract=Date.now();
+    } else if(elapsed>=25*60*1000){
+      // Completed without interaction!
+      S.pomodoro.potions=Math.min(4,(S.pomodoro.potions||0)+1);
+      S.pomodoro.startMs=Date.now(); // auto-start next session
+      pomLastInteract=Date.now();
+      floaty('🧪 POMODORO COMPLETE! +1 Potion','#0af',16);
     }
   }
   // Augments
@@ -1381,7 +1450,8 @@ function frame(now){
     $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
       Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
       Global mult: <b>×${globalMult().toFixed(2)}</b>
-      (NP ×${nguBananaMult().toFixed(2)} • Magic ×${wandoosMult().toFixed(2)} • Tok ×${tokenMult().toFixed(2)} • Shop ×${shopProdMult()})`;
+      (NP ×${nguBananaMult().toFixed(2)} • Magic ×${wandoosMult().toFixed(2)} • Tok ×${tokenMult().toFixed(2)} • Shop ×${shopProdMult()}${potionMult()>1?' • 🧪×'+potionMult():''})`;
+
   }
   requestAnimationFrame(frame);
 }
@@ -1444,6 +1514,7 @@ function load(){
     if(typeof S.offlineTier!=='number')  S.offlineTier=0;
     if(typeof S.bestCombo!=='number')    S.bestCombo=0;
     if(typeof S.totalTaps!=='number')    S.totalTaps=0;
+    if(!S.pomodoro||typeof S.pomodoro!=='object') S.pomodoro={potions:0,active:false,startMs:0,boostEnds:0,boostMult:1};
 
     // Offline progress — rate determined by offlineTier
     const _offPct=S.offlineTier>0?OFFLINE_TIERS[S.offlineTier-1].pct/100:0.05; // 5% base
