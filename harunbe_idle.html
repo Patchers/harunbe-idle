@@ -768,7 +768,7 @@ function renderBldgs(){
 
 function renderNGU(){
   const box=$('#nguSlots'); box.innerHTML='';
-  const mineBonus=S.mines.energy>0?` + 🏭${(S.mines.energy*2.5/S.ngu.length*TUNE.nguRate).toFixed(1)}/s`:'';
+  const mineBonus=S.mines.energy>0?` + 🏭${(S.mines.energy*4.0/S.ngu.length*TUNE.nguRate).toFixed(1)}/s`:'';
   S.ngu.forEach(slot=>{
     const a=el('div','alloc');
     a.innerHTML=`<img src="${sprite('ngu')}">
@@ -794,7 +794,7 @@ function renderNGU(){
 function renderWandoos(){
   const box=$('#wandoos'); box.innerHTML='';
   const w=S.wandoos;
-  const mineBonus=S.mines.magic>0?` + 🏭${(S.mines.magic*1.8*TUNE.wandoosRate).toFixed(1)}/s`:'';
+  const mineBonus=S.mines.magic>0?` + 🏭${(S.mines.magic*3.0*TUNE.wandoosRate).toFixed(1)}/s`:'';
   const a=el('div','alloc');
   a.innerHTML=`<img src="${sprite('core')}">
     <div class="grow"><div>Magic System — <span style="color:var(--leaf)">Lv ${w.lvl}</span>
