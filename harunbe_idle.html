@@ -466,20 +466,36 @@ function sprite(name){ return REAL_SPRITES[name]||PH[name]||PH.up; }
 
 /* ── Phase B data tables ─────────────────────────────────────────────────── */
 const ZONES=['Misty Lowlands','Banana Grove','Poacher Camp','Ruined Temple','Volcano Rim',
-             'Shadow Falls','Cursed Cavern','Blood Marsh','Storm Peaks','Dragon Spine'];
+             'Shadow Falls','Cursed Cavern','Blood Marsh','Storm Peaks','Dragon Spine',
+             'Void Rifts','Celestial Gates','The Abyss','Chaos Realm','Infinity Spire',
+             'The Nexus','Death Wastes','Sky Throne','The Maelstrom','Eternity Peak'];
 const SLOT_NAMES=['Head','Chest','Legs','Weapon','Charm'];
 const ITEM_NAMES=[
-  ['Leaf Cap',     'Iron Helm',    'Bone Crown',    'Chaos Hood'   ],
-  ['Bark Armor',   'Chain Vest',   'Temple Coat',   'Warden Mail'  ],
-  ['Vine Wraps',   'Scout Boots',  'Stone Greaves', 'Shadow Steps' ],
-  ['Sharp Branch', 'Hunter Spear', 'Runed Blade',   'Volcano Edge' ],
-  ['Jungle Charm', 'Power Sigil',  'Ancient Token', 'Chaos Crystal'],
+  // Head
+  ['Leaf Cap',     'Iron Helm',     'Bone Crown',     'Chaos Hood',
+   'Void Mask',    'Celestial Visor','Storm Circlet',  'Eternal Crown'   ],
+  // Chest
+  ['Bark Armor',   'Chain Vest',    'Temple Coat',    'Warden Mail',
+   'Void Plate',   'Celestial Robe','Storm Jacket',   'Eternal Mantle'  ],
+  // Legs
+  ['Vine Wraps',   'Scout Boots',   'Stone Greaves',  'Shadow Steps',
+   'Void Treads',  'Celestial Coil','Storm Walkers',  'Eternal Greaves' ],
+  // Weapon
+  ['Sharp Branch', 'Hunter Spear',  'Runed Blade',    'Volcano Edge',
+   'Void Fang',    'Celestial Edge','Storm Cleaver',  'Eternal Blade'   ],
+  // Charm / Trinket
+  ['Jungle Charm', 'Power Sigil',   'Ancient Token',  'Chaos Crystal',
+   'Void Shard',   'Celestial Orb', 'Storm Jewel',    'Eternal Gem'     ],
 ];
 const ENEMY_TIERS=[
-  {name:'Poacher',    spr:'enemy_poacher',hpMult:1.0,dmgMult:1.0,minZone:1},
-  {name:'Bandit',     spr:'enemy_poacher',hpMult:1.4,dmgMult:1.3,minZone:3},
-  {name:'Tomb Raider',spr:'enemy_poacher',hpMult:1.9,dmgMult:1.7,minZone:5},
-  {name:'Cultist',    spr:'enemy_poacher',hpMult:2.6,dmgMult:2.2,minZone:8},
+  {name:'Poacher',     spr:'enemy_poacher',hpMult:1.0, dmgMult:1.0, minZone:1 },
+  {name:'Bandit',      spr:'enemy_poacher',hpMult:1.4, dmgMult:1.3, minZone:3 },
+  {name:'Tomb Raider', spr:'enemy_poacher',hpMult:1.9, dmgMult:1.7, minZone:5 },
+  {name:'Cultist',     spr:'enemy_poacher',hpMult:2.6, dmgMult:2.2, minZone:8 },
+  {name:'Void Walker', spr:'enemy_poacher',hpMult:3.8, dmgMult:3.1, minZone:11},
+  {name:'Shadow Lord', spr:'boss',          hpMult:5.5, dmgMult:4.5, minZone:14},
+  {name:'Dragon',      spr:'boss',          hpMult:8.0, dmgMult:6.5, minZone:17},
+  {name:'Celestial',   spr:'boss',          hpMult:12., dmgMult:9.0, minZone:20},
 ];
 
 /* Phase C — augment definitions */
@@ -514,6 +530,27 @@ const ACHIEVEMENTS=[
   {id:'aug10',       name:'Augmented',     desc:'Reach augment level 10',           check:()=>S.augs.some(a=>a.lvlAug>=10)},
   {id:'daily3',      name:'Regular',       desc:'Claim 3-day daily streak',         check:()=>(S.daily&&S.daily.streak>=3)},
   {id:'ngu20',       name:'NP Surge',      desc:'Any NP slot reach level 20',       check:()=>S.ngu.some(s=>s.lvl>=20)},
+];
+
+/* Phase G — offline tiers (bought sequentially) */
+const OFFLINE_TIERS=[
+  {pct:10,  gemCost:10},
+  {pct:25,  gemCost:30},
+  {pct:50,  gemCost:100},
+  {pct:75,  gemCost:300},
+  {pct:90,  gemCost:750},
+  {pct:100, gemCost:2000},
+];
+
+/* Phase G — tap combo milestones */
+const COMBO_MILESTONES=[
+  {at:100,  mult:100,   label:'CENTURY'},
+  {at:250,  mult:200,   label:'HOT STREAK'},
+  {at:500,  mult:500,   label:'MADNESS'},
+  {at:1000, mult:1000,  label:'INSANE'},
+  {at:2000, mult:2500,  label:'GODLIKE'},
+  {at:3000, mult:5000,  label:'LEGENDARY'},
+  {at:5000, mult:10000, label:'ASCENDED'},
 ];
 
 /* Phase F — shop item definitions */
@@ -563,6 +600,25 @@ const SHOP_ITEMS=[
    desc:'Permanent +1 click power',
    cost:()=>({c:15+(S.shop.clickBuys||0)*10,g:0}),
    buy:()=>{S.click++;S.shop.clickBuys++;}},
+  // ── Mines ─────────────────────────────────────────────────────────────────
+  {id:'mineE',   name:'Energy Mine',    icon:'ngu',    type:'perm',
+   desc:()=>`Passive NP energy drip (owned: ${S.mines.energy}) — bypasses cap`,
+   cost:()=>({c:Math.floor(50*Math.pow(1.5,S.mines.energy)),g:0}),
+   buy:()=>S.mines.energy++},
+  {id:'mineM',   name:'Magic Mine',     icon:'core',   type:'perm',
+   desc:()=>`Passive Magic System drip (owned: ${S.mines.magic}) — bypasses cap`,
+   cost:()=>({c:0,g:Math.ceil(5*Math.pow(1.6,S.mines.magic))}),
+   buy:()=>S.mines.magic++},
+  // ── Offline progress tiers ────────────────────────────────────────────────
+  {id:'offline', name:'Offline Ticker', icon:'daily',  type:'perm',
+   desc:()=>{
+     const t=S.offlineTier;
+     const cur=t>0?OFFLINE_TIERS[t-1].pct+'%':'5% (base)';
+     const nxt=t<OFFLINE_TIERS.length?OFFLINE_TIERS[t].pct+'%':'MAX';
+     return `Current offline rate: ${cur} → next: ${nxt}`;
+   },
+   cost:()=>S.offlineTier>=OFFLINE_TIERS.length?{c:0,g:0}:{c:0,g:OFFLINE_TIERS[S.offlineTier].gemCost},
+   buy:()=>{if(S.offlineTier<OFFLINE_TIERS.length)S.offlineTier++;}},
 ];
 
 /* ====================== GAME STATE ====================== */
@@ -594,6 +650,9 @@ const S={
   daily:{lastClaim:0,streak:0},
   ach:[],
   rebirths:0, tokens:0, last:Date.now(),
+  mines:{energy:0,magic:0},
+  offlineTier:0,
+  bestCombo:0, totalTaps:0,
   shop:{
     prod2xEnds:0, prod4xEnds:0, advBoostEnds:0,
     permPwr:0, permTgh:0, permHth:0, permRgn:0, permAugBoost:0,
@@ -636,13 +695,24 @@ function currentEnemyMaxHp(){
   return S.adv.isBoss ? Math.floor(b*t.hpMult*3) : Math.floor(b*t.hpMult);
 }
 function rollGear(zone,slot,isBoss){
-  const tier=Math.min(3,Math.floor((zone-1)/3));
-  const base=zone+Math.floor(Math.random()*3);
+  const tier=Math.min(7,Math.floor((zone-1)/3));
+  const base=zone+Math.floor(Math.random()*Math.max(3,Math.floor(zone*0.3)));
   const name=ITEM_NAMES[slot][tier];
+  // z10+ items get a flat scaling bonus so they stay relevant
+  const zBonus=zone>10?Math.floor((zone-10)*0.8):0;
   let pwr=0,tgh=0,hth=0,rgn=0;
-  if(slot===3){      pwr=base+(isBoss?3:0); tgh=Math.floor(base*0.1); }
-  else if(slot===4){ rgn=Math.max(1,Math.floor(base*0.3)+(isBoss?2:0)); pwr=Math.floor(base*0.3); hth=base*2; }
-  else {             tgh=Math.floor(base*0.4)+(isBoss?1:0); hth=base*3+(isBoss?base:0); pwr=Math.floor(base*0.1); }
+  if(slot===3){      // Weapon — high power
+    pwr=base+(isBoss?Math.floor(base*0.4):0)+zBonus;
+    tgh=Math.floor(base*0.1);
+  } else if(slot===4){ // Charm — regen + utility
+    rgn=Math.max(1,Math.floor(base*0.3)+(isBoss?Math.floor(base*0.25):0)+Math.floor(zBonus*0.3));
+    pwr=Math.floor(base*0.3)+Math.floor(zBonus*0.2);
+    hth=base*2+zBonus*4;
+  } else {             // Armour — defence + HP
+    tgh=Math.floor(base*0.4)+(isBoss?Math.floor(base*0.15):0)+Math.floor(zBonus*0.4);
+    hth=base*3+(isBoss?base:0)+zBonus*6;
+    pwr=Math.floor(base*0.1);
+  }
   return {slot,name,pwr,tgh,hth,rgn,zone,isBoss};
 }
 function bananasPerSec(){ return S.gens.reduce((a,g)=>a+g.n*g.prod,0)*globalMult(); }
@@ -787,6 +857,13 @@ function renderAugs(){
   });
 }
 
+function itemSellValue(item){
+  if(!item) return 0;
+  const power=(item.pwr||0)+(item.tgh||0)+Math.floor((item.hth||0)/5)+(item.rgn||0)*4;
+  const val=Math.floor(power*0.5+(item.zone||1)*3+(item.isBoss?40:0));
+  return Math.max(10, Math.min(val, 500)); // 10–500 gold
+}
+
 function renderAdv(){
   const a=S.adv;
   const tier=getEnemyTier(a.zone);
@@ -850,21 +927,39 @@ function renderAdv(){
     il.innerHTML='<div class="note" style="padding:6px;font-size:15px">No items — defeat enemies for gear drops (20%), or kill bosses for guaranteed drops.</div>';
     return;
   }
+  // SELL ALL button
+  const sellAllBar=el('div','minirow');
+  const totalSell=S.adv.inventory.reduce((a,i)=>a+itemSellValue(i),0);
+  const saBtn=el('button','minibtn'); saBtn.style.color='var(--gold)';
+  saBtn.textContent='SELL ALL (+'+fmt(totalSell)+' 🪙)';
+  saBtn.onclick=()=>{
+    S.coins+=totalSell; S.adv.inventory=[]; floaty('+'+fmt(totalSell)+' from loot!','var(--gold)',12);
+    renderAdv(); renderResBar();
+  };
+  sellAllBar.appendChild(saBtn); il.appendChild(sellAllBar);
   S.adv.inventory.forEach((item,idx)=>{
+    const sv=itemSellValue(item);
     const row=el('div','inv-item'+(item.isBoss?' boss-loot':''));
     const stats=`PWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}`;
     row.innerHTML=`<img src="${sprite(item.isBoss?'trophy':'gear')}">
       <div style="flex:1"><div class="iname">${item.name}
         <span style="color:var(--dim);font-size:14px">[${SLOT_NAMES[item.slot]}] Z${item.zone}</span></div>
         <div class="istats">${stats}</div></div>
-      <button class="ieqbtn">EQUIP</button>`;
-    row.querySelector('.ieqbtn').onclick=(e)=>{
+      <button class="ieqbtn">EQUIP</button>
+      <button class="ieqbtn" style="color:var(--gold);border-color:var(--gold2);margin-left:3px">SELL<br><span style="font-size:7px">+${sv}🪙</span></button>`;
+    const btns=row.querySelectorAll('.ieqbtn');
+    btns[0].onclick=(e)=>{
       e.stopPropagation();
       const old=S.adv.gear[item.slot];
       S.adv.gear[item.slot]=item;
       S.adv.inventory.splice(idx,1);
       if(old) S.adv.inventory.push(old);
       renderAdv();
+    };
+    btns[1].onclick=(e)=>{
+      e.stopPropagation();
+      S.coins+=sv; S.adv.inventory.splice(idx,1);
+      floaty('+'+sv+' 🪙','var(--gold)',12); renderAdv(); renderResBar();
     };
     il.appendChild(row);
   });
@@ -990,22 +1085,30 @@ function renderShop(){
     </div>`;
   }
   html+=`<div style="display:grid;gap:6px">`;
+  // Best combo display
+  html+=`<div class="note" style="margin-bottom:6px;font-size:14px">
+    Best combo: <span style="color:var(--gold)">${S.bestCombo||0}</span> taps &nbsp;•&nbsp;
+    Total taps: <span style="color:var(--leaf)">${fmt(S.totalTaps||0)}</span> &nbsp;•&nbsp;
+    Offline rate: <span style="color:var(--blue)">${S.offlineTier>0?OFFLINE_TIERS[S.offlineTier-1].pct+'%':'5% (base)'}</span>
+  </div>`;
   SHOP_ITEMS.forEach(item=>{
     const {c,g}=item.cost();
-    const canAfford=(c===0||S.coins>=c)&&(g===0||S.gems>=g);
-    const costStr=(c>0?`${fmt(c)} 🪙`:'')+((c>0&&g>0)?' + ':'')+( g>0?`${g} 💎`:'');
+    const isMaxed=c===0&&g===0&&item.id==='offline'&&S.offlineTier>=OFFLINE_TIERS.length;
+    const canAfford=!isMaxed&&(c===0||S.coins>=c)&&(g===0||S.gems>=g);
+    const costStr=isMaxed?'MAXED':(c>0?`${fmt(c)} 🪙`:'')+((c>0&&g>0)?' + ':'')+( g>0?`${g} 💎`:'');
+    const descTxt=typeof item.desc==='function'?item.desc():item.desc;
     let extra='';
     if(item.type==='timed') extra=timerStr(S.shop[item.timeField]||0);
     html+=`<div class="quest-row">
       <img src="${sprite(item.icon)}" style="width:34px;height:34px;flex:none">
       <div class="grow">
         <div style="font-size:17px">${item.name}${extra}</div>
-        <div class="note" style="font-size:13px">${item.desc}</div>
+        <div class="note" style="font-size:13px">${descTxt}</div>
       </div>
       <div style="text-align:right;flex:none;min-width:70px">
-        <div style="color:${canAfford?'var(--gold)':'var(--red)'};font-size:14px">${costStr}</div>
+        <div style="color:${isMaxed?'var(--leaf)':canAfford?'var(--gold)':'var(--red)'};font-size:14px">${costStr}</div>
         <button class="ieqbtn" data-shopid="${item.id}"
-          style="margin-top:4px;${canAfford?'':'opacity:.45;pointer-events:none'}">BUY</button>
+          style="margin-top:4px;${(canAfford&&!isMaxed)?'':'opacity:.45;pointer-events:none'}">${isMaxed?'MAX':'BUY'}</button>
       </div>
     </div>`;
   });
@@ -1051,6 +1154,7 @@ function renderAll(){
 
 /* mascot mood */
 let lastTap=Date.now(),recentTap=false,tapCombo=0,comboTimer=null;
+const COMBO_RESET_MS=3000; // 3 s window — keeps combo alive with casual tapping
 function mood(){
   if(S.adv.hp<heroMaxHp()*0.3&&S.adv.enemyHp>0) return ['harunbe_angry','angry!'];
   if(recentTap) return ['harunbe_happy','happy :)'];
@@ -1063,15 +1167,42 @@ function mood(){
 function tap(){
   const amt=S.click*nguClickMult()*tokenMult();
   S.bananas+=amt; S.totalBananas+=amt; lastTap=Date.now(); recentTap=true;
+  S.totalTaps=(S.totalTaps||0)+1;
   setTimeout(()=>recentTap=false,500);
-  // Combo tracking
-  tapCombo++; if(comboTimer) clearTimeout(comboTimer);
-  comboTimer=setTimeout(()=>{tapCombo=0;},1200);
-  if(tapCombo>=5&&tapCombo%5===0){
-    floaty('COMBO x'+tapCombo+'!','#ff4',14);
-    floaty('+'+fmt(amt*tapCombo*0.1)+'✨','#fff',10); // bonus burst
-    S.bananas+=amt*tapCombo*0.1; S.totalBananas+=amt*tapCombo*0.1;
-  } else {
+
+  // Combo tracking — 3 s window
+  const prevCombo=tapCombo; tapCombo++;
+  if(S.bestCombo==null||tapCombo>S.bestCombo) S.bestCombo=tapCombo;
+  if(comboTimer) clearTimeout(comboTimer);
+  comboTimer=setTimeout(()=>{tapCombo=0;},COMBO_RESET_MS);
+
+  // Milestone bonuses (fire once when threshold crossed)
+  let milestoneFired=false;
+  COMBO_MILESTONES.forEach(m=>{
+    if(prevCombo<m.at&&tapCombo>=m.at){
+      const bonus=amt*m.mult;
+      S.bananas+=bonus; S.totalBananas+=bonus;
+      floaty(m.label+'!','#ff4',15);
+      floaty('×'+fmt(m.mult)+' BONUS','#fff',11);
+      floaty('+'+fmt(bonus)+'🔥','var(--gold)',10);
+      milestoneFired=true;
+    }
+  });
+  // Every 1000 taps above 3000 keeps rewarding
+  if(!milestoneFired&&tapCombo>=3000&&tapCombo%1000===0){
+    const bonus=amt*5000;
+    S.bananas+=bonus; S.totalBananas+=bonus;
+    floaty('ENDLESS x5000!','#ff4',15);
+    floaty('+'+fmt(bonus)+'🔥','var(--gold)',10);
+    milestoneFired=true;
+  }
+  // Small every-5-tap micro-burst
+  if(!milestoneFired&&tapCombo>=5&&tapCombo%5===0){
+    const burst=amt*tapCombo*0.1;
+    S.bananas+=burst; S.totalBananas+=burst;
+    if(tapCombo%25===0) floaty('COMBO x'+tapCombo,'#ff4',12);
+    else floaty('+'+fmt(amt));
+  } else if(!milestoneFired){
     floaty('+'+fmt(amt));
   }
   renderResBar();
@@ -1143,6 +1274,22 @@ function tick(dt){
     S.wandoos.prog+=S.wandoos.alloc*dt*TUNE.wandoosRate;
     while(S.wandoos.prog>=S.wandoos.need){
       S.wandoos.prog-=S.wandoos.need; S.wandoos.lvl++; S.wandoos.need=Math.floor(S.wandoos.need*1.3);
+    }
+  }
+  // Energy Mines — passive NP drip independent of cap allocation
+  if(S.mines.energy>0){
+    const drip=S.mines.energy*2.5; // 2.5 energy-equiv per mine per second
+    S.ngu.forEach(s=>{
+      s.prog+=(drip/S.ngu.length)*dt*TUNE.nguRate;
+      while(s.prog>=s.need){s.prog-=s.need;s.lvl++;s.need=Math.floor(s.need*1.25);}
+    });
+  }
+  // Magic Mines — passive Magic System drip
+  if(S.mines.magic>0){
+    const drip=S.mines.magic*1.8;
+    S.wandoos.prog+=drip*dt*TUNE.wandoosRate;
+    while(S.wandoos.prog>=S.wandoos.need){
+      S.wandoos.prog-=S.wandoos.need;S.wandoos.lvl++;S.wandoos.need=Math.floor(S.wandoos.need*1.3);
     }
   }
   // Augments
@@ -1288,11 +1435,21 @@ function load(){
     if(!S.shop||typeof S.shop!=='object') S.shop={};
     S.shop=Object.assign({},_shopDef,S.shop);
 
-    // Offline progress (cap 8 h)
+    // ── Phase G migration ──
+    if(!S.mines||typeof S.mines!=='object') S.mines={energy:0,magic:0};
+    if(typeof S.mines.energy!=='number') S.mines.energy=0;
+    if(typeof S.mines.magic!=='number')  S.mines.magic=0;
+    if(typeof S.offlineTier!=='number')  S.offlineTier=0;
+    if(typeof S.bestCombo!=='number')    S.bestCombo=0;
+    if(typeof S.totalTaps!=='number')    S.totalTaps=0;
+
+    // Offline progress — rate determined by offlineTier
+    const _offPct=S.offlineTier>0?OFFLINE_TIERS[S.offlineTier-1].pct/100:0.05; // 5% base
     const off=Math.min(8*3600,(Date.now()-(o.last||Date.now()))/1000);
-    const earned=bananasPerSec()*off;
+    const earned=bananasPerSec()*off*_offPct;
     S.bananas+=earned; S.totalBananas+=earned;
-    if(off>10) S._offlineMsg='Away '+Math.floor(off/60)+'m '+Math.floor(off%60)+'s → +'+fmt(earned)+' 🍌';
+    const pctLabel=Math.round(_offPct*100)+'%';
+    if(off>10) S._offlineMsg='Away '+Math.floor(off/60)+'m '+Math.floor(off%60)+'s → +'+fmt(earned)+' 🍌 ('+pctLabel+' offline)';
   }catch(e){}
 }
 
