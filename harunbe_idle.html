@@ -768,7 +768,11 @@ function renderBldgs(){
 
 function renderNGU(){
   const box=$('#nguSlots'); box.innerHTML='';
-  const mineBonus=S.mines.energy>0?` + 🏭${(S.mines.energy*4.0/S.ngu.length*TUNE.nguRate).toFixed(1)}/s`:'';
+  const mineBonus=S.mines.energy>0?(() => {
+    const baseRate = S.ngu.reduce((sum, s) => sum + s.alloc, 0) * TUNE.nguRate;
+    const totalBonus = baseRate * 0.05 * S.mines.energy;
+    return ` + 🏭${(totalBonus/S.ngu.length).toFixed(1)}/s`;
+  })():'';
   S.ngu.forEach(slot=>{
     const a=el('div','alloc');
     a.innerHTML=`<img src="${sprite('ngu')}">
@@ -794,7 +798,7 @@ function renderNGU(){
 function renderWandoos(){
   const box=$('#wandoos'); box.innerHTML='';
   const w=S.wandoos;
-  const mineBonus=S.mines.magic>0?` + 🏭${(S.mines.magic*3.0*TUNE.wandoosRate).toFixed(1)}/s`:'';
+  const mineBonus=S.mines.magic>0?` + 🏭${(w.alloc * TUNE.wandoosRate * 0.1 * S.mines.magic).toFixed(1)}/s`:'';
   const a=el('div','alloc');
   a.innerHTML=`<img src="${sprite('core')}">
     <div class="grow"><div>Magic System — <span style="color:var(--leaf)">Lv ${w.lvl}</span>
@@ -1278,18 +1282,20 @@ function tick(dt){
       S.wandoos.prog-=S.wandoos.need; S.wandoos.lvl++; S.wandoos.need=Math.floor(S.wandoos.need*1.3);
     }
   }
-  // Energy Mines — passive NP drip independent of cap allocation
+  // Energy Mines — scale as percentage of current NP production
   if(S.mines.energy>0){
-    const drip=S.mines.energy*4.0; // 4 energy-equiv per mine per second — noticeable early game
+    const baseNpRate = S.ngu.reduce((sum, slot) => sum + slot.alloc, 0) * TUNE.nguRate;
+    const mineBonus = baseNpRate * 0.05 * S.mines.energy; // 5% per mine
     S.ngu.forEach(s=>{
-      s.prog+=(drip/S.ngu.length)*dt*TUNE.nguRate;
+      s.prog+=(mineBonus/S.ngu.length)*dt;
       while(s.prog>=s.need){s.prog-=s.need;s.lvl++;s.need=Math.floor(s.need*1.25);}
     });
   }
-  // Magic Mines — passive Magic System drip
+  // Magic Mines — scale as percentage of current Magic System production
   if(S.mines.magic>0){
-    const drip=S.mines.magic*3.0; // 3 magic per mine per second
-    S.wandoos.prog+=drip*dt*TUNE.wandoosRate;
+    const baseMagicRate = S.wandoos.alloc * TUNE.wandoosRate;
+    const mineBonus = baseMagicRate * 0.1 * S.mines.magic; // 10% per mine
+    S.wandoos.prog+=mineBonus*dt;
     while(S.wandoos.prog>=S.wandoos.need){
       S.wandoos.prog-=S.wandoos.need;S.wandoos.lvl++;S.wandoos.need=Math.floor(S.wandoos.need*1.3);
     }
