@@ -768,12 +768,7 @@ function renderBldgs(){
 
 function renderNGU(){
   const box=$('#nguSlots'); box.innerHTML='';
-  const mineBonus=S.mines.energy>0?(() => {
-    const baseRate = S.ngu.reduce((sum, s) => sum + s.alloc, 0) * TUNE.nguRate;
-    const energyPct = (5 + S.rebirths * 0.15) / 100;
-    const totalBonus = baseRate * energyPct * S.mines.energy;
-    return ` + 🏭${(totalBonus/S.ngu.length).toFixed(1)}/s`;
-  })():'';
+  const mineBonus=S.mines.energy>0?` • +🏭${((2 + S.rebirths * 0.05) * S.mines.energy).toFixed(1)} energy/s`:'';
   S.ngu.forEach(slot=>{
     const a=el('div','alloc');
     a.innerHTML=`<img src="${sprite('ngu')}">
@@ -799,7 +794,7 @@ function renderNGU(){
 function renderWandoos(){
   const box=$('#wandoos'); box.innerHTML='';
   const w=S.wandoos;
-  const mineBonus=S.mines.magic>0?` + 🏭${(w.alloc * TUNE.wandoosRate * ((10 + S.rebirths * 0.2) / 100) * S.mines.magic).toFixed(1)}/s`:'';
+  const mineBonus=S.mines.magic>0?` • +🏭${((3 + S.rebirths * 0.05) * S.mines.magic).toFixed(1)} magic/s`:'';
   const a=el('div','alloc');
   a.innerHTML=`<img src="${sprite('core')}">
     <div class="grow"><div>Magic System — <span style="color:var(--leaf)">Lv ${w.lvl}</span>
@@ -1273,35 +1268,25 @@ function tick(dt){
   S.ngu.forEach(s=>{
     if(s.alloc>0){
       s.prog+=s.alloc*dt*TUNE.nguRate;
-      while(s.prog>=s.need){s.prog-=s.need;s.lvl++;s.need=Math.floor(s.need*1.25);}
+      while(s.prog>=s.need){s.prog-=s.need;s.lvl++;s.need=Math.floor(s.need*1.10);}
     }
   });
   // Wandoos
   if(S.wandoos.alloc>0){
     S.wandoos.prog+=S.wandoos.alloc*dt*TUNE.wandoosRate;
     while(S.wandoos.prog>=S.wandoos.need){
-      S.wandoos.prog-=S.wandoos.need; S.wandoos.lvl++; S.wandoos.need=Math.floor(S.wandoos.need*1.3);
+      S.wandoos.prog-=S.wandoos.need; S.wandoos.lvl++; S.wandoos.need=Math.floor(S.wandoos.need*1.10);
     }
   }
-  // Energy Mines — scale as percentage of current NP production, boosted by rebirth
+  // Energy Mines — add directly to energy pool
   if(S.mines.energy>0){
-    const baseNpRate = S.ngu.reduce((sum, slot) => sum + slot.alloc, 0) * TUNE.nguRate;
-    const energyPct = (5 + S.rebirths * 0.15) / 100; // 5% base + 0.15% per rebirth
-    const mineBonus = baseNpRate * energyPct * S.mines.energy;
-    S.ngu.forEach(s=>{
-      s.prog+=(mineBonus/S.ngu.length)*dt;
-      while(s.prog>=s.need){s.prog-=s.need;s.lvl++;s.need=Math.floor(s.need*1.25);}
-    });
+    const energyPerSecond = (2 + S.rebirths * 0.05) * S.mines.energy; // 2 base + 0.05 per rebirth per mine
+    S.energy = Math.min(S.energy + energyPerSecond * dt, S.energyCap);
   }
-  // Magic Mines — scale as percentage of current Magic System production, boosted by rebirth
+  // Magic Mines — add directly to magic pool
   if(S.mines.magic>0){
-    const baseMagicRate = S.wandoos.alloc * TUNE.wandoosRate;
-    const magicPct = (10 + S.rebirths * 0.2) / 100; // 10% base + 0.2% per rebirth
-    const mineBonus = baseMagicRate * magicPct * S.mines.magic;
-    S.wandoos.prog+=mineBonus*dt;
-    while(S.wandoos.prog>=S.wandoos.need){
-      S.wandoos.prog-=S.wandoos.need;S.wandoos.lvl++;S.wandoos.need=Math.floor(S.wandoos.need*1.3);
-    }
+    const magicPerSecond = (3 + S.rebirths * 0.05) * S.mines.magic; // 3 base + 0.05 per rebirth per mine
+    S.magic = Math.min(S.magic + magicPerSecond * dt, S.magicCap);
   }
   // Augments
   S.augs.forEach(aug=>{
