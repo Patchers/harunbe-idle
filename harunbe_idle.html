@@ -174,6 +174,7 @@ h1{
     <div class="panel">
       <h2>ENERGY → AUGMENTS (combat boosts)</h2>
       <div class="note">Each augment has a <b>base</b> (levels up the stat) and a <b>boost</b> (multiplies the base). Both consume energy.</div>
+      <div class="minirow" style="margin:6px 0"><button class="minibtn" onclick="splitAugEnergy()">⚡ Split Aug Energy</button></div>
       <div id="augSlots" style="margin-top:8px"></div>
     </div>
   </div>
@@ -603,11 +604,11 @@ const SHOP_ITEMS=[
   // ── Mines ─────────────────────────────────────────────────────────────────
   {id:'mineE',   name:'Energy Mine',    icon:'ngu',    type:'perm',
    desc:()=>`Passive NP energy drip (owned: ${S.mines.energy}) — bypasses cap`,
-   cost:()=>({c:Math.floor(50*Math.pow(1.5,S.mines.energy)),g:0}),
+   cost:()=>({c:Math.floor(25*Math.pow(1.5,S.mines.energy)),g:0}),
    buy:()=>S.mines.energy++},
   {id:'mineM',   name:'Magic Mine',     icon:'core',   type:'perm',
    desc:()=>`Passive Magic System drip (owned: ${S.mines.magic}) — bypasses cap`,
-   cost:()=>({c:0,g:Math.ceil(5*Math.pow(1.6,S.mines.magic))}),
+   cost:()=>({c:0,g:Math.ceil(3*Math.pow(1.6,S.mines.magic))}),
    buy:()=>S.mines.magic++},
   // ── Offline progress tiers ────────────────────────────────────────────────
   {id:'offline', name:'Offline Ticker', icon:'daily',  type:'perm',
@@ -634,12 +635,12 @@ const S={
     {id:'trade',   name:'Trading Post',      spr:'bldg_trade',      n:0,base:160000,mult:1.18,prod:280},
   ],
   ngu:[
-    {name:'Banana Power',alloc:0,lvl:0,prog:0,need:30},
-    {name:'Click Power', alloc:0,lvl:0,prog:0,need:40},
-    {name:'Jungle Force',alloc:0,lvl:0,prog:0,need:55},
+    {name:'Banana Power',alloc:0,lvl:0,prog:0,need:8},
+    {name:'Click Power', alloc:0,lvl:0,prog:0,need:10},
+    {name:'Jungle Force',alloc:0,lvl:0,prog:0,need:12},
   ],
   idleE:false,
-  wandoos:{alloc:0,lvl:0,prog:0,need:50},
+  wandoos:{alloc:0,lvl:0,prog:0,need:10},
   augs:Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100})),
   adv:{
     zone:1, hp:50, kills:0, zoneKills:0, isBoss:false, enemyHp:0, bossKills:0,
@@ -654,6 +655,7 @@ const S={
   offlineTier:0,
   bestCombo:0, totalTaps:0,
   pomodoro:{potions:0, active:false, startMs:0, boostEnds:0, boostMult:1},
+  buy10xUnlocked:false, buy10xOn:false,
   shop:{
     prod2xEnds:0, prod4xEnds:0, advBoostEnds:0,
     permPwr:0, permTgh:0, permHth:0, permRgn:0, permAugBoost:0,
@@ -684,7 +686,8 @@ function shopProdMult(){
 }
 function shopAdvMult(){ return S.shop.advBoostEnds>Date.now()?10:1; }
 function potionMult(){ return (S.pomodoro&&Date.now()<(S.pomodoro.boostEnds||0))?(S.pomodoro.boostMult||1):1; }
-function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult()*potionMult(); }
+function pomodoroActiveMult(){ return (S.pomodoro&&S.pomodoro.active)?1.5:1; }
+function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult()*potionMult()*pomodoroActiveMult(); }
 function heroPower(){    return 5+S.rebirths*3+equippedStat('pwr')+Math.floor(S.ngu[2].lvl*1.5)+Math.floor(augStat('pwr'))+(S.shop.permPwr||0); }
 function heroToughness(){ return equippedStat('tgh')+Math.floor(augStat('tgh'))+(S.shop.permTgh||0); }
 function heroMaxHp(){    return 50+S.adv.zone*10+S.rebirths*15+equippedStat('hth')+Math.floor(augStat('hth'))+(S.shop.permHth||0); }
@@ -770,7 +773,7 @@ function renderBldgs(){
 
 function renderNGU(){
   const box=$('#nguSlots'); box.innerHTML='';
-  const mineBonus=S.mines.energy>0?` • 🏭+${((2 + S.rebirths * 0.05) * S.mines.energy / S.ngu.length).toFixed(1)}/s`:'';
+  const mineBonus=S.mines.energy>0?` • 🏭+${((16 + S.rebirths * 0.4) * S.mines.energy / S.ngu.length).toFixed(1)}/s`:'';
   S.ngu.forEach(slot=>{
     const a=el('div','alloc');
     a.innerHTML=`<img src="${sprite('ngu')}">
@@ -796,7 +799,7 @@ function renderNGU(){
 function renderWandoos(){
   const box=$('#wandoos'); box.innerHTML='';
   const w=S.wandoos;
-  const mineBonus=S.mines.magic>0?` • 🏭+${((3 + S.rebirths * 0.05) * S.mines.magic).toFixed(1)}/s`:'';
+  const mineBonus=S.mines.magic>0?` • 🏭+${((24 + S.rebirths * 0.4) * S.mines.magic).toFixed(1)}/s`:'';
   const a=el('div','alloc');
   a.innerHTML=`<img src="${sprite('core')}">
     <div class="grow"><div>Magic System — <span style="color:var(--leaf)">Lv ${w.lvl}</span>
@@ -861,6 +864,16 @@ function renderAugs(){
   });
 }
 
+function splitAugEnergy(){
+  pomLastInteract=Date.now();
+  const nguUsed=S.ngu.reduce((a,s)=>a+s.alloc,0);
+  const wUsed=S.wandoos.alloc;
+  const available=S.energy.cap-nguUsed-wUsed;
+  const perAug=Math.floor(available/S.augs.length);
+  S.augs.forEach(aug=>{aug.eAug=perAug;aug.eBoost=0;});
+  S.energy.used=nguUsed+wUsed+(perAug*S.augs.length);
+  renderAugs(); renderResBar();
+}
 function itemSellValue(item){
   if(!item) return 0;
   const power=(item.pwr||0)+(item.tgh||0)+Math.floor((item.hth||0)/5)+(item.rgn||0)*4;
@@ -1127,46 +1140,87 @@ function renderShop(){
     <div class="note" style="margin-top:6px;font-size:12px">1🧪=×2 &nbsp; 2🧪=×4 &nbsp; 3🧪=×7 &nbsp; 4🧪=×10 &nbsp;(5 min boost)</div>
   </div>`;
 
+  // 10× Buy toggle row
+  const b10Unlocked=S.buy10xUnlocked||false;
+  const b10On=S.buy10xOn&&b10Unlocked;
+  if(!b10Unlocked){
+    html+=`<div class="quest-row" style="margin-bottom:4px">
+      <span style="font-size:20px">🔟</span>
+      <div class="grow"><div style="font-size:16px">Unlock ×10 Buy</div>
+        <div class="note">Buy permanent items 10 at a time</div></div>
+      <div style="text-align:right;flex:none;min-width:70px">
+        <div style="color:${S.gems>=100?'var(--gold)':'var(--red)'};font-size:14px">100 💎</div>
+        <button class="ieqbtn" id="buy10xBtn" style="margin-top:4px;${S.gems>=100?'':'opacity:.45;pointer-events:none'}">UNLOCK</button>
+      </div></div>`;
+  } else {
+    html+=`<div style="margin-bottom:6px;display:flex;gap:8px;align-items:center">
+      <span style="font-size:14px;color:var(--dim)">×10 Buy Mode:</span>
+      <button id="buy10xBtn" style="flex:1;background:${b10On?'var(--leaf)':'var(--mid)'};color:${b10On?'#000':'var(--txt)'}">${b10On?'✅ ON — click to disable':'OFF — click to enable'}</button>
+    </div>`;
+  }
+
   SHOP_ITEMS.forEach(item=>{
     const {c,g}=item.cost();
     const isMaxed=c===0&&g===0&&item.id==='offline'&&S.offlineTier>=OFFLINE_TIERS.length;
     const canAfford=!isMaxed&&(c===0||S.coins>=c)&&(g===0||S.gems>=g);
-    const costStr=isMaxed?'MAXED':(c>0?`${fmt(c)} 🪙`:'')+((c>0&&g>0)?' + ':'')+( g>0?`${g} 💎`:'');
+    const times=b10On&&item.type==='perm'?10:1;
+    const costStr=isMaxed?'MAXED':(c>0?`${fmt(c*times)} 🪙`:'')+((c>0&&g>0)?' + ':'')+( g>0?`${g*times} 💎`:'');
     const descTxt=typeof item.desc==='function'?item.desc():item.desc;
     let extra='';
     if(item.type==='timed') extra=timerStr(S.shop[item.timeField]||0);
+    const buyLabel=isMaxed?'MAX':(times>1?'BUY ×10':'BUY');
     html+=`<div class="quest-row">
       <img src="${sprite(item.icon)}" style="width:34px;height:34px;flex:none">
       <div class="grow">
         <div style="font-size:17px">${item.name}${extra}</div>
         <div class="note" style="font-size:13px">${descTxt}</div>
       </div>
-      <div style="text-align:right;flex:none;min-width:70px">
-        <div style="color:${isMaxed?'var(--leaf)':canAfford?'var(--gold)':'var(--red)'};font-size:14px">${costStr}</div>
+      <div style="text-align:right;flex:none;min-width:80px">
+        <div style="color:${isMaxed?'var(--leaf)':canAfford?'var(--gold)':'var(--red)'};font-size:13px">${costStr}</div>
         <button class="ieqbtn" data-shopid="${item.id}"
-          style="margin-top:4px;${(canAfford&&!isMaxed)?'':'opacity:.45;pointer-events:none'}">${isMaxed?'MAX':'BUY'}</button>
+          style="margin-top:4px;${(canAfford&&!isMaxed)?'':'opacity:.45;pointer-events:none'}">${buyLabel}</button>
       </div>
     </div>`;
   });
   html+=`</div>`;
   panel.innerHTML=html;
+
+  // 10× buy unlock/toggle button
+  const b10Btn=panel.querySelector('#buy10xBtn');
+  if(b10Btn) b10Btn.onclick=()=>{
+    if(!S.buy10xUnlocked){
+      if(S.gems<100){floaty('Need 100 gems!','var(--blue)');return;}
+      S.gems-=100; S.buy10xUnlocked=true; S.buy10xOn=true;
+      floaty('×10 Buy UNLOCKED!','var(--leaf)',14);
+    } else {
+      S.buy10xOn=!S.buy10xOn;
+      floaty(S.buy10xOn?'×10 Buy ON':'×10 Buy OFF','var(--leaf)',12);
+    }
+    renderShop();
+  };
+
   panel.querySelectorAll('[data-shopid]').forEach(btn=>{
     const item=SHOP_ITEMS.find(x=>x.id===btn.dataset.shopid);
     if(!item) return;
     btn.onclick=()=>{
-      const {c,g}=item.cost();
-      if(c>0&&S.coins<c){ floaty('Not enough coins!','var(--red)'); return; }
-      if(g>0&&S.gems<g){  floaty('Not enough gems!','var(--blue)'); return; }
-      if(c>0) S.coins-=c;
-      if(g>0) S.gems-=g;
-      if(item.type==='timed'){
-        const cur=S.shop[item.timeField]||0;
-        S.shop[item.timeField]=Math.max(Date.now(),cur)+item.dur*1000;
-        floaty(item.name+'! '+Math.floor(item.dur/60)+'m','#ff4',13);
-      } else {
-        item.buy();
-        floaty(item.name+'!','var(--leaf)',13);
+      const times=b10On&&item.type==='perm'?10:1;
+      let bought=0;
+      for(let i=0;i<times;i++){
+        const {c,g}=item.cost();
+        if(c>0&&S.coins<c) break;
+        if(g>0&&S.gems<g) break;
+        if(c>0) S.coins-=c;
+        if(g>0) S.gems-=g;
+        if(item.type==='timed'){
+          const cur=S.shop[item.timeField]||0;
+          S.shop[item.timeField]=Math.max(Date.now(),cur)+item.dur*1000;
+          floaty(item.name+'! '+Math.floor(item.dur/60)+'m','#ff4',13);
+          break; // timed only buys once
+        } else {
+          item.buy(); bought++;
+        }
       }
+      if(bought>0) floaty(item.name+(bought>1?` ×${bought}`:'')+'!','var(--leaf)',13);
       renderShop(); renderResBar();
     };
   });
@@ -1191,6 +1245,8 @@ function renderAll(){
 /* mascot mood */
 let lastTap=Date.now(),recentTap=false,tapCombo=0,comboTimer=null;
 let pomLastInteract=Date.now(); // tracks any game interaction for pomodoro
+// Any click anywhere resets the pomodoro idle timer
+document.addEventListener('click',()=>{pomLastInteract=Date.now();},true);
 const COMBO_RESET_MS=3000; // 3 s window — keeps combo alive with casual tapping
 function mood(){
   if(S.adv.hp<heroMaxHp()*0.3&&S.adv.enemyHp>0) return ['harunbe_angry','angry!'];
@@ -1333,7 +1389,7 @@ function tick(dt){
   }
   // Energy Mines — add directly to energy pool
   if(S.mines.energy>0){
-    const drip = (2 + S.rebirths * 0.05) * S.mines.energy; // 2 base + 0.05/rebirth per mine
+    const drip = (16 + S.rebirths * 0.4) * S.mines.energy; // 8× boosted, scales with rebirth
     S.ngu.forEach(s=>{
       s.prog += (drip / S.ngu.length) * dt;
       while(s.prog >= s.need){s.prog -= s.need; s.lvl++; s.need = Math.floor(s.need * 1.10);}
@@ -1341,7 +1397,7 @@ function tick(dt){
   }
   // Magic Mines — directly drive Magic System progress (bypasses cap)
   if(S.mines.magic>0){
-    const drip = (3 + S.rebirths * 0.05) * S.mines.magic; // 3 base + 0.05/rebirth per mine
+    const drip = (24 + S.rebirths * 0.4) * S.mines.magic; // 8× boosted, scales with rebirth
     S.wandoos.prog += drip * dt;
     while(S.wandoos.prog >= S.wandoos.need){
       S.wandoos.prog -= S.wandoos.need; S.wandoos.lvl++; S.wandoos.need = Math.floor(S.wandoos.need * 1.10);
@@ -1450,7 +1506,7 @@ function frame(now){
     $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
       Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
       Global mult: <b>×${globalMult().toFixed(2)}</b>
-      (NP ×${nguBananaMult().toFixed(2)} • Magic ×${wandoosMult().toFixed(2)} • Tok ×${tokenMult().toFixed(2)} • Shop ×${shopProdMult()}${potionMult()>1?' • 🧪×'+potionMult():''})`;
+      (NP ×${nguBananaMult().toFixed(2)} • Magic ×${wandoosMult().toFixed(2)} • Tok ×${tokenMult().toFixed(2)} • Shop ×${shopProdMult()}${potionMult()>1?' • 🧪×'+potionMult():''}${pomodoroActiveMult()>1?' • 🍅×1.5':''})`;
 
   }
   requestAnimationFrame(frame);
@@ -1515,6 +1571,8 @@ function load(){
     if(typeof S.bestCombo!=='number')    S.bestCombo=0;
     if(typeof S.totalTaps!=='number')    S.totalTaps=0;
     if(!S.pomodoro||typeof S.pomodoro!=='object') S.pomodoro={potions:0,active:false,startMs:0,boostEnds:0,boostMult:1};
+    if(typeof S.buy10xUnlocked!=='boolean') S.buy10xUnlocked=false;
+    if(typeof S.buy10xOn!=='boolean') S.buy10xOn=false;
 
     // Offline progress — rate determined by offlineTier
     const _offPct=S.offlineTier>0?OFFLINE_TIERS[S.offlineTier-1].pct/100:0.05; // 5% base
