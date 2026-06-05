@@ -260,8 +260,8 @@ const REAL_SPRITES = {
    ─────────────────────────────────────────────────────────────────────────── */
 const TUNE = {
   rebirthDiv:  5e5,   // ← #1
-  nguRate:     0.6,   // ← #2
-  wandoosRate: 0.5,   // ← #3
+  nguRate:     5.0,   // ← #2  (was 0.6 — raised for responsive bars)
+  wandoosRate: 4.0,   // ← #3  (was 0.5)
 };
 
 /* ---- pixel-art renderer ---- */
@@ -1333,8 +1333,9 @@ $('#rebirthBtn').onclick=()=>{
   const gain=Math.floor(Math.sqrt(S.totalBananas/TUNE.rebirthDiv)); if(gain<1)return;
   S.tokens+=gain; S.rebirths++; S.bananas=0; S.totalBananas=0;
   S.gens.forEach(g=>g.n=0);
-  S.ngu.forEach(s=>{s.lvl=0;s.prog=0;s.alloc=0;});
-  S.wandoos.lvl=0; S.wandoos.prog=0; S.wandoos.alloc=0;
+  const _nguInit=[8,10,12];
+  S.ngu.forEach((s,i)=>{s.lvl=0;s.prog=0;s.alloc=0;s.need=_nguInit[i]||8;});
+  S.wandoos.lvl=0; S.wandoos.prog=0; S.wandoos.alloc=0; S.wandoos.need=10;
   S.augs=Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100}));
   S.energy={cap:100,used:0,rate:6}; S.magic={cap:60,used:0,rate:3};
   S.adv.zoneKills=0; S.adv.isBoss=false;
@@ -1377,14 +1378,14 @@ function tick(dt){
   S.ngu.forEach(s=>{
     if(s.alloc>0){
       s.prog+=s.alloc*dt*TUNE.nguRate;
-      while(s.prog>=s.need){s.prog-=s.need;s.lvl++;s.need=Math.floor(s.need*1.10);}
+      while(s.prog>=s.need){s.prog-=s.need;s.lvl++;s.need=Math.floor(s.need*1.03);}
     }
   });
   // Wandoos
   if(S.wandoos.alloc>0){
     S.wandoos.prog+=S.wandoos.alloc*dt*TUNE.wandoosRate;
     while(S.wandoos.prog>=S.wandoos.need){
-      S.wandoos.prog-=S.wandoos.need; S.wandoos.lvl++; S.wandoos.need=Math.floor(S.wandoos.need*1.10);
+      S.wandoos.prog-=S.wandoos.need; S.wandoos.lvl++; S.wandoos.need=Math.floor(S.wandoos.need*1.03);
     }
   }
   // Energy Mines — add directly to energy pool
@@ -1573,6 +1574,10 @@ function load(){
     if(!S.pomodoro||typeof S.pomodoro!=='object') S.pomodoro={potions:0,active:false,startMs:0,boostEnds:0,boostMult:1};
     if(typeof S.buy10xUnlocked!=='boolean') S.buy10xUnlocked=false;
     if(typeof S.buy10xOn!=='boolean') S.buy10xOn=false;
+    // Fix needs that bloated from old 1.10/1.25 growth across rebirths
+    const _nguInit=[8,10,12];
+    S.ngu.forEach((s,i)=>{ if((s.need||0)>5000) s.need=_nguInit[i]||8; });
+    if((S.wandoos.need||0)>5000) S.wandoos.need=10;
 
     // Offline progress — rate determined by offlineTier
     const _offPct=S.offlineTier>0?OFFLINE_TIERS[S.offlineTier-1].pct/100:0.05; // 5% base
