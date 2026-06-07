@@ -1238,6 +1238,7 @@ function renderRebirth(){
   const resetBtn=$('#resetBtn');
   if(resetBtn) resetBtn.onclick=()=>{
     if(confirm('⚠ RESET ALL DATA?\n\nThis will permanently delete all progress. This cannot be undone.')) {
+      window.removeEventListener('beforeunload', save); // prevent autosave from restoring data on unload
       localStorage.removeItem('harunbe_idle');
       location.reload();
     }
