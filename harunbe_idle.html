@@ -215,6 +215,9 @@ h1{
       <h2>REBIRTH</h2>
       <div class="note" id="rebirthNote"></div>
       <div class="minirow" style="margin-top:10px"><button class="tapbtn" id="rebirthBtn">REBIRTH</button></div>
+      <div class="minirow" style="margin-top:14px;border-top:1px solid var(--mid);padding-top:12px">
+        <button class="minibtn" id="resetBtn" style="color:var(--red);border-color:var(--red)">⚠ RESET ALL DATA</button>
+      </div>
     </div>
   </div>
 
@@ -676,9 +679,9 @@ function augStat(key){
   });
   return t;
 }
-function nguBananaMult(){ return (1+S.ngu[0].lvl*0.08)*(1+S.ngu[2].lvl*0.05); }
-function nguClickMult(){ return 1+S.ngu[1].lvl*0.15; }
-function wandoosMult(){ return 1+S.wandoos.lvl*0.04; }
+function nguBananaMult(){ return 1+S.ngu[0].lvl*0.012+S.ngu[2].lvl*0.008; } // additive — was quadratic product causing runaway scaling
+function nguClickMult(){ return 1+S.ngu[1].lvl*0.05; }
+function wandoosMult(){ return 1+S.wandoos.lvl*0.015; }
 function tokenMult(){ return 1+S.tokens*0.10; }
 function shopProdMult(){
   const n=Date.now();
@@ -1232,6 +1235,13 @@ function renderRebirth(){
     Resets bananas, buildings, NP & Magic System. Keeps tokens, gear &amp; adventure progress.<br>
     Rebirth now for <span class="tokens">+${gain}</span> tokens.
     ${gain<1?'(need ~'+fmt(TUNE.rebirthDiv)+' total bananas)':''}`;
+  const resetBtn=$('#resetBtn');
+  if(resetBtn) resetBtn.onclick=()=>{
+    if(confirm('⚠ RESET ALL DATA?\n\nThis will permanently delete all progress. This cannot be undone.')) {
+      localStorage.removeItem('save');
+      location.reload();
+    }
+  };
 }
 
 function renderAll(){
