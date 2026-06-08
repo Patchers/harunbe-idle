@@ -1431,7 +1431,14 @@ function floaty(t,color,size){
   f.style.top=(m.top+15+(Math.random()*20-10))+'px';
   document.body.appendChild(f); setTimeout(()=>f.remove(),1000);
 }
-$('#mascot').onclick=tap; $('#tapBtn').onclick=tap;
+// Use pointerdown (fires immediately on press, before the :active transform
+// shifts the element) so mouse clicks near the edges aren't lost — click
+// requires mousedown+mouseup on the same element, and the press-shift can
+// move the element out from under the cursor before mouseup fires.
+function bindTap(elm){
+  elm.addEventListener('pointerdown',(e)=>{ e.preventDefault(); tap(); });
+}
+bindTap($('#mascot')); bindTap($('#tapBtn'));
 
 $('#rebirthBtn').onclick=()=>{
   const gain=Math.floor(Math.sqrt(S.totalBananas/TUNE.rebirthDiv)); if(gain<1)return;
