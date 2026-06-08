@@ -174,7 +174,7 @@ h1{
     <div class="panel">
       <h2>ENERGY → AUGMENTS (combat boosts)</h2>
       <div class="note">Each augment has a <b>base</b> (levels up the stat) and a <b>boost</b> (multiplies the base). Both consume energy.</div>
-      <div class="minirow" style="margin:6px 0"><button class="minibtn" onclick="splitAugEnergy()">⚡ Split Aug Energy</button></div>
+      <div class="minirow" style="margin:6px 0" id="augSplitRow"></div>
       <div id="augSlots" style="margin-top:8px"></div>
     </div>
   </div>
@@ -562,13 +562,16 @@ const SHOP_ITEMS=[
   // ── Timed boosts ──────────────────────────────────────────────────────────
   {id:'prod2x',    name:'Jungle Surge',   icon:'potion', type:'timed',
    desc:'×2 all banana production for 2 minutes',
-   cost:()=>({c:10,g:0}),   timeField:'prod2xEnds',  dur:120},
+   cost:()=>({c:10,g:0}),   timeField:'prod2xEnds',  dur:120,
+   unlockFlag:'jungle2xUnlocked', unlockRebirths:5, unlockCost:{g:100}},
   {id:'prod4x',    name:'Power Surge',    icon:'potion', type:'timed',
    desc:'×4 all banana production for 2 min (2² bonus)',
-   cost:()=>({c:100,g:0}),  timeField:'prod4xEnds',  dur:120},
+   cost:()=>({c:100,g:0}),  timeField:'prod4xEnds',  dur:120,
+   unlockFlag:'power4xUnlocked', unlockRebirths:8, unlockCost:{g:500}},
   {id:'advBoost',  name:'Battle Tonic',   icon:'potion', type:'timed',
    desc:'×10 all combat stats for 5 minutes',
-   cost:()=>({c:50,g:0}),   timeField:'advBoostEnds',dur:300},
+   cost:()=>({c:50,g:0}),   timeField:'advBoostEnds',dur:300,
+   unlockFlag:'battleTonicUnlocked', unlockRebirths:6, unlockCost:{g:200}},
   // ── Permanent adventure stats ──────────────────────────────────────────────
   {id:'permPwr',   name:'Power Rune',     icon:'shield', type:'perm',
    desc:'Permanent +1 hero power',
@@ -607,12 +610,12 @@ const SHOP_ITEMS=[
   // ── Mines ─────────────────────────────────────────────────────────────────
   {id:'mineE',   name:'Energy Mine',    icon:'ngu',    type:'perm',
    desc:()=>`Passive NP energy drip (owned: ${S.mines.energy}) — bypasses cap`,
-   cost:()=>({c:Math.floor(25*Math.pow(1.5,S.mines.energy)),g:0}),
-   buy:()=>S.mines.energy++},
+   cost:()=>({c:Math.floor(2000*Math.pow(1.5,S.mines.energy)),g:0}),
+   buy:()=>S.mines.energy++, unlockRebirths:10},
   {id:'mineM',   name:'Magic Mine',     icon:'core',   type:'perm',
    desc:()=>`Passive Magic System drip (owned: ${S.mines.magic}) — bypasses cap`,
-   cost:()=>({c:0,g:Math.ceil(3*Math.pow(1.6,S.mines.magic))}),
-   buy:()=>S.mines.magic++},
+   cost:()=>({c:Math.floor(2000*Math.pow(1.5,S.mines.magic)),g:0}),
+   buy:()=>S.mines.magic++, unlockRebirths:10},
   // ── Offline progress tiers ────────────────────────────────────────────────
   {id:'offline', name:'Offline Ticker', icon:'daily',  type:'perm',
    desc:()=>{
@@ -664,6 +667,7 @@ const S={
     permPwr:0, permTgh:0, permHth:0, permRgn:0, permAugBoost:0,
     magicBuys:0, energyBuys:0, clickBuys:0,
     permPwrBuys:0, permTghBuys:0, permHthBuys:0, permRgnBuys:0, permAugBuys:0,
+    jungle2xUnlocked:false, power4xUnlocked:false, battleTonicUnlocked:false, augSplitUnlocked:false,
   },
 };
 
@@ -824,6 +828,7 @@ function renderWandoos(){
 }
 
 function renderAugs(){
+  renderAugSplitBtn();
   const box=$('#augSlots'); box.innerHTML='';
   AUGS.forEach((def,i)=>{
     const aug=S.augs[i];
@@ -876,6 +881,24 @@ function splitAugEnergy(){
   S.augs.forEach(aug=>{aug.eAug=perAug;aug.eBoost=0;});
   S.energy.used=nguUsed+wUsed+(perAug*S.augs.length);
   renderAugs(); renderResBar();
+}
+function renderAugSplitBtn(){
+  const row=$('#augSplitRow'); if(!row) return;
+  const maxAugLvl=Math.max(...S.augs.map(a=>a.lvlAug||0));
+  if(S.shop.augSplitUnlocked){
+    row.innerHTML=`<button class="minibtn" onclick="splitAugEnergy()">⚡ Split Aug Energy</button>`;
+  } else if(maxAugLvl>=5){
+    const canAfford=S.gems>=100;
+    row.innerHTML=`<button class="minibtn" onclick="unlockAugSplit()" style="${canAfford?'':'opacity:.5;pointer-events:none'}">🔒 Unlock Split (100 💎)</button>`;
+  } else {
+    row.innerHTML=`<span class="note" style="font-size:12px">⚡ Split unlocks at aug level 5</span>`;
+  }
+}
+function unlockAugSplit(){
+  if(S.gems<100){floaty('Need 100 gems!','var(--blue)');return;}
+  S.gems-=100; S.shop.augSplitUnlocked=true;
+  floaty('⚡ Aug Split UNLOCKED!','var(--leaf)',14);
+  renderAugSplitBtn();
 }
 function itemSellValue(item){
   if(!item) return 0;
@@ -1073,46 +1096,14 @@ function renderQuests(){
 
 function renderShop(){
   const panel=$('#shopPanel'); if(!panel)return;
-  if(S.rebirths<3){
-    panel.innerHTML=`<h2>SHOP 🏪 — LOCKED</h2>
-      <div style="text-align:center;padding:18px 0">
-        <img src="${sprite('shop')}" style="width:64px;height:64px;opacity:.45">
-        <div class="note" style="margin-top:10px">The jungle merchant only deals with<br>experienced adventurers.<br><br>
-        <span style="color:var(--gold)">Unlock at 3 Rebirths</span><br>
-        Current rebirths: <b style="color:var(--leaf)">${S.rebirths}</b> / 3</div>
-      </div>`;
-    return;
-  }
   const now=Date.now();
   function timerStr(ends){
     if(!ends||ends<=now) return '<span style="color:var(--dim);font-size:12px"> (inactive)</span>';
     const s=Math.ceil((ends-now)/1000);
     return ` <span style="color:var(--leaf);font-size:13px">[${Math.floor(s/60)}m ${s%60}s left]</span>`;
   }
-  const p2=S.shop.prod2xEnds>now, p4=S.shop.prod4xEnds>now, ab=S.shop.advBoostEnds>now;
-  let html=`<h2>SHOP 🏪</h2>
-  <div class="note" style="margin-bottom:8px">
-    Coins: <span style="color:var(--gold)">${fmt(S.coins)} 🪙</span> &nbsp;•&nbsp;
-    Gems: <span style="color:var(--blue)">${S.gems} 💎</span>
-  </div>`;
-  if(p2||p4||ab){
-    html+=`<div class="daily-box" style="border-color:var(--leaf);margin-bottom:8px">
-      <img src="${sprite('potion')}" style="width:28px;height:28px">
-      <span style="color:var(--leaf)">⚡ ACTIVE BOOSTS: </span>
-      ${p2?`<span style="color:var(--gold)">Surge ×2${timerStr(S.shop.prod2xEnds)}</span> `:''}
-      ${p4?`<span style="color:var(--gold)">Surge ×4${timerStr(S.shop.prod4xEnds)}</span> `:''}
-      ${ab?`<span style="color:var(--red)">Battle Tonic ×10${timerStr(S.shop.advBoostEnds)}</span>`:''}
-    </div>`;
-  }
-  html+=`<div style="display:grid;gap:6px">`;
-  // Best combo display
-  html+=`<div class="note" style="margin-bottom:6px;font-size:14px">
-    Best combo: <span style="color:var(--gold)">${S.bestCombo||0}</span> taps &nbsp;•&nbsp;
-    Total taps: <span style="color:var(--leaf)">${fmt(S.totalTaps||0)}</span> &nbsp;•&nbsp;
-    Offline rate: <span style="color:var(--blue)">${S.offlineTier>0?OFFLINE_TIERS[S.offlineTier-1].pct+'%':'5% (base)'}</span>
-  </div>`;
 
-  // Pomodoro section
+  // ── Pomodoro (always visible, rebirth 0) ────────────────────────────────────
   const pom=S.pomodoro||{};
   const pomActive=pom.active&&pom.startMs;
   const pomElapsed=pomActive?Math.min(Date.now()-pom.startMs,25*60*1000):0;
@@ -1124,7 +1115,13 @@ function renderShop(){
   const boostActive=pom.boostEnds&&Date.now()<pom.boostEnds;
   const boostLeft=boostActive?Math.max(0,Math.ceil((pom.boostEnds-Date.now())/1000)):0;
   const pomBarW=pomActive?Math.min(100,Math.round(pomElapsed/(25*600)))+'%':'0%';
-  html+=`<div class="daily-box" style="border-color:var(--blue);margin-bottom:8px">
+  const canStartPom=S.coins>=100;
+  let html=`<h2>SHOP 🏪</h2>
+  <div class="note" style="margin-bottom:8px">
+    Coins: <span style="color:var(--gold)">${fmt(S.coins)} 🪙</span> &nbsp;•&nbsp;
+    Gems: <span style="color:var(--blue)">${S.gems} 💎</span>
+  </div>
+  <div class="daily-box" style="border-color:var(--blue);margin-bottom:8px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
       <span style="font-size:20px">🍅</span>
       <span style="color:var(--blue);font-family:var(--font);font-size:15px">POMODORO MODE</span>
@@ -1132,61 +1129,130 @@ function renderShop(){
     </div>
     ${boostActive?`<div style="color:var(--leaf);margin-bottom:6px">⚡ POTION ACTIVE ×${pom.boostMult||1} — ${Math.floor(boostLeft/60)}m ${boostLeft%60}s left</div>`:''}
     ${pomActive?`
-      <div class="note" style="margin-bottom:4px">Stay idle — <span style="color:var(--leaf)">${pomSecsDisp} remaining</span> (tap = reset timer)</div>
+      <div class="note" style="margin-bottom:4px">Stay idle — <span style="color:var(--leaf)">${pomSecsDisp} remaining</span> • production ×1.5 🍌</div>
       <div class="bar e" style="margin-bottom:8px"><i style="width:${pomBarW};background:var(--blue)"></i></div>
-    `:`<div class="note" style="margin-bottom:6px">Start a 25-min idle session to earn potions 🧪</div>`}
+    `:`<div class="note" style="margin-bottom:6px">25-min idle session → earn potion 🧪 • costs 100 🪙 to start</div>`}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="startPomodoro()" style="flex:1">${pomActive?'⏹ CANCEL':'▶ START POMODORO'}</button>
-      ${potions>0&&!boostActive?`<button onclick="activatePotion()" style="flex:1;background:var(--blue)">🧪 ACTIVATE ×${potionBoostMult} (${potions} potions)</button>`:''}
+      <button onclick="startPomodoro()" style="flex:1;${!pomActive&&!canStartPom?'opacity:.45;pointer-events:none':''}">${pomActive?'⏹ CANCEL':'▶ START (100 🪙)'}</button>
+      ${potions>0&&!boostActive?`<button onclick="activatePotion()" style="flex:1;background:var(--blue)">🧪 ACTIVATE ×${potionBoostMult} (${potions} 🧪)</button>`:''}
       ${potions===0&&!boostActive?`<button disabled style="flex:1;opacity:.4">🧪 No potions yet</button>`:''}
     </div>
     <div class="note" style="margin-top:6px;font-size:12px">1🧪=×2 &nbsp; 2🧪=×4 &nbsp; 3🧪=×7 &nbsp; 4🧪=×10 &nbsp;(5 min boost)</div>
   </div>`;
 
-  // 10× Buy toggle row
+  // ── Shop locked below rebirth 3 ─────────────────────────────────────────────
+  if(S.rebirths<3){
+    html+=`<div style="text-align:center;padding:14px 0;border:1px solid var(--mid);border-radius:6px">
+      <img src="${sprite('shop')}" style="width:48px;height:48px;opacity:.4">
+      <div class="note" style="margin-top:8px">Shop unlocks at <span style="color:var(--gold)">Rebirth 3</span>
+      (${S.rebirths}/3)</div></div>`;
+    panel.innerHTML=html; return;
+  }
+
+  const p2=S.shop.prod2xEnds>now, p4=S.shop.prod4xEnds>now, ab=S.shop.advBoostEnds>now;
+  if(p2||p4||ab){
+    html+=`<div class="daily-box" style="border-color:var(--leaf);margin-bottom:8px">
+      <img src="${sprite('potion')}" style="width:28px;height:28px">
+      <span style="color:var(--leaf)">⚡ ACTIVE: </span>
+      ${p2?`<span style="color:var(--gold)">×2${timerStr(S.shop.prod2xEnds)}</span> `:''}
+      ${p4?`<span style="color:var(--gold)">×4${timerStr(S.shop.prod4xEnds)}</span> `:''}
+      ${ab?`<span style="color:var(--red)">Battle×10${timerStr(S.shop.advBoostEnds)}</span>`:''}
+    </div>`;
+  }
+  html+=`<div class="note" style="margin-bottom:6px;font-size:13px">
+    Best combo: <span style="color:var(--gold)">${S.bestCombo||0}</span> &nbsp;•&nbsp;
+    Taps: <span style="color:var(--leaf)">${fmt(S.totalTaps||0)}</span> &nbsp;•&nbsp;
+    Offline: <span style="color:var(--blue)">${S.offlineTier>0?OFFLINE_TIERS[S.offlineTier-1].pct+'%':'5%'}</span>
+  </div>`;
+
+  // 10× Buy toggle
   const b10Unlocked=S.buy10xUnlocked||false;
   const b10On=S.buy10xOn&&b10Unlocked;
   if(!b10Unlocked){
     html+=`<div class="quest-row" style="margin-bottom:4px">
       <span style="font-size:20px">🔟</span>
-      <div class="grow"><div style="font-size:16px">Unlock ×10 Buy</div>
-        <div class="note">Buy permanent items 10 at a time</div></div>
+      <div class="grow"><div style="font-size:16px">Unlock ×10 Buy</div><div class="note">Buy permanent items 10 at a time</div></div>
       <div style="text-align:right;flex:none;min-width:70px">
         <div style="color:${S.gems>=100?'var(--gold)':'var(--red)'};font-size:14px">100 💎</div>
         <button class="ieqbtn" id="buy10xBtn" style="margin-top:4px;${S.gems>=100?'':'opacity:.45;pointer-events:none'}">UNLOCK</button>
       </div></div>`;
   } else {
     html+=`<div style="margin-bottom:6px;display:flex;gap:8px;align-items:center">
-      <span style="font-size:14px;color:var(--dim)">×10 Buy Mode:</span>
-      <button id="buy10xBtn" style="flex:1;background:${b10On?'var(--leaf)':'var(--mid)'};color:${b10On?'#000':'var(--txt)'}">${b10On?'✅ ON — click to disable':'OFF — click to enable'}</button>
+      <span style="font-size:14px;color:var(--dim)">×10 Buy:</span>
+      <button id="buy10xBtn" style="flex:1;background:${b10On?'var(--leaf)':'var(--mid)'};color:${b10On?'#000':'var(--txt)'}">${b10On?'✅ ON':'OFF'}</button>
     </div>`;
   }
 
+  html+=`<div style="display:grid;gap:6px">`;
   SHOP_ITEMS.forEach(item=>{
+    const descTxt=typeof item.desc==='function'?item.desc():item.desc;
+    // ── Rebirth-only gate (no gem unlock, just requires rebirths) ──────────────
+    if(item.unlockRebirths&&!item.unlockFlag&&S.rebirths<item.unlockRebirths){
+      html+=`<div class="quest-row" style="opacity:.5">
+        <img src="${sprite(item.icon)}" style="width:34px;height:34px;flex:none;filter:grayscale(1)">
+        <div class="grow"><div style="font-size:17px">${item.name}</div>
+          <div class="note" style="font-size:13px">${descTxt}</div></div>
+        <div style="text-align:right;flex:none;min-width:80px">
+          <div style="color:var(--dim);font-size:13px">🔒 Rebirth ${item.unlockRebirths}</div>
+        </div></div>`; return;
+    }
+    // ── Gem-unlock gate ────────────────────────────────────────────────────────
+    if(item.unlockFlag){
+      const isUnlocked=S.shop[item.unlockFlag];
+      if(!isUnlocked){
+        const meetsReb=S.rebirths>=item.unlockRebirths;
+        const uc=item.unlockCost||{};
+        const canUnlock=meetsReb&&(uc.c==null||S.coins>=uc.c)&&(uc.g==null||S.gems>=uc.g);
+        const ucStr=(uc.c?`${fmt(uc.c)} 🪙`:'')+(uc.c&&uc.g?' + ':'')+(uc.g?`${uc.g} 💎`:'');
+        html+=`<div class="quest-row" style="${meetsReb?'':'opacity:.5'}">
+          <img src="${sprite(item.icon)}" style="width:34px;height:34px;flex:none;${meetsReb?'':'filter:grayscale(1)'}">
+          <div class="grow"><div style="font-size:17px">${item.name}</div>
+            <div class="note" style="font-size:13px">${descTxt}</div></div>
+          <div style="text-align:right;flex:none;min-width:80px">
+            ${meetsReb
+              ?`<div style="color:${canUnlock?'var(--gold)':'var(--red)'};font-size:13px">${ucStr}</div>
+                 <button class="ieqbtn" data-unlockid="${item.id}" style="margin-top:4px;${canUnlock?'':'opacity:.45;pointer-events:none'}">UNLOCK</button>`
+              :`<div style="color:var(--dim);font-size:13px">🔒 Rebirth ${item.unlockRebirths}</div>`
+            }
+          </div></div>`; return;
+      }
+    }
+    // ── Normal buy row ─────────────────────────────────────────────────────────
     const {c,g}=item.cost();
     const isMaxed=c===0&&g===0&&item.id==='offline'&&S.offlineTier>=OFFLINE_TIERS.length;
     const canAfford=!isMaxed&&(c===0||S.coins>=c)&&(g===0||S.gems>=g);
     const times=b10On&&item.type==='perm'?10:1;
     const costStr=isMaxed?'MAXED':(c>0?`${fmt(c*times)} 🪙`:'')+((c>0&&g>0)?' + ':'')+( g>0?`${g*times} 💎`:'');
-    const descTxt=typeof item.desc==='function'?item.desc():item.desc;
-    let extra='';
-    if(item.type==='timed') extra=timerStr(S.shop[item.timeField]||0);
+    let extra=''; if(item.type==='timed') extra=timerStr(S.shop[item.timeField]||0);
     const buyLabel=isMaxed?'MAX':(times>1?'BUY ×10':'BUY');
     html+=`<div class="quest-row">
       <img src="${sprite(item.icon)}" style="width:34px;height:34px;flex:none">
-      <div class="grow">
-        <div style="font-size:17px">${item.name}${extra}</div>
-        <div class="note" style="font-size:13px">${descTxt}</div>
-      </div>
+      <div class="grow"><div style="font-size:17px">${item.name}${extra}</div>
+        <div class="note" style="font-size:13px">${descTxt}</div></div>
       <div style="text-align:right;flex:none;min-width:80px">
         <div style="color:${isMaxed?'var(--leaf)':canAfford?'var(--gold)':'var(--red)'};font-size:13px">${costStr}</div>
         <button class="ieqbtn" data-shopid="${item.id}"
           style="margin-top:4px;${(canAfford&&!isMaxed)?'':'opacity:.45;pointer-events:none'}">${buyLabel}</button>
-      </div>
-    </div>`;
+      </div></div>`;
   });
   html+=`</div>`;
   panel.innerHTML=html;
+
+  // Gem-unlock buttons
+  panel.querySelectorAll('[data-unlockid]').forEach(btn=>{
+    const item=SHOP_ITEMS.find(x=>x.id===btn.dataset.unlockid);
+    if(!item||!item.unlockFlag) return;
+    btn.onclick=()=>{
+      const uc=item.unlockCost||{};
+      if(uc.c&&S.coins<uc.c){floaty('Not enough coins!','var(--red)');return;}
+      if(uc.g&&S.gems<uc.g){floaty('Not enough gems!','var(--blue)');return;}
+      if(uc.c) S.coins-=uc.c;
+      if(uc.g) S.gems-=uc.g;
+      S.shop[item.unlockFlag]=true;
+      floaty(item.name+' UNLOCKED!','var(--leaf)',14);
+      renderShop();
+    };
+  });
 
   // 10× buy unlock/toggle button
   const b10Btn=panel.querySelector('#buy10xBtn');
@@ -1315,7 +1381,12 @@ function startPomodoro(){
   pomLastInteract=Date.now();
   if(!S.pomodoro) S.pomodoro={potions:0,active:false,startMs:0,boostEnds:0,boostMult:1};
   if(S.pomodoro.active){ S.pomodoro.active=false; floaty('🍅 Pomodoro cancelled','#f44',13); }
-  else { S.pomodoro.active=true; S.pomodoro.startMs=Date.now(); pomLastInteract=Date.now(); floaty('🍅 Pomodoro started! Stay idle for 25min','#0af',13); }
+  else {
+    if(S.coins<100){floaty('Need 100 🪙 to start!','var(--red)',13);return;}
+    S.coins-=100;
+    S.pomodoro.active=true; S.pomodoro.startMs=Date.now(); pomLastInteract=Date.now();
+    floaty('🍅 Pomodoro started! Stay idle for 25min','#0af',13);
+  }
   renderShop();
 }
 function activatePotion(){
@@ -1585,6 +1656,10 @@ function load(){
     if(!S.pomodoro||typeof S.pomodoro!=='object') S.pomodoro={potions:0,active:false,startMs:0,boostEnds:0,boostMult:1};
     if(typeof S.buy10xUnlocked!=='boolean') S.buy10xUnlocked=false;
     if(typeof S.buy10xOn!=='boolean') S.buy10xOn=false;
+    if(typeof S.shop.jungle2xUnlocked!=='boolean') S.shop.jungle2xUnlocked=false;
+    if(typeof S.shop.power4xUnlocked!=='boolean') S.shop.power4xUnlocked=false;
+    if(typeof S.shop.battleTonicUnlocked!=='boolean') S.shop.battleTonicUnlocked=false;
+    if(typeof S.shop.augSplitUnlocked!=='boolean') S.shop.augSplitUnlocked=false;
     // Fix needs bloated from missing rebirth reset in older saves
     const _nguInit=[30,40,55];
     S.ngu.forEach((s,i)=>{ if((s.need||0)>50000) s.need=_nguInit[i]||30; });
