@@ -807,21 +807,41 @@ function renderResBar(){
   });
 }
 
+function maxAffordable(g){
+  let n=0,money=S.bananas,c=genCost(g),lvl=g.n;
+  while(money>=c&&n<1000){ money-=c; n++; lvl++; c=Math.floor(g.base*Math.pow(g.mult,lvl)); }
+  return n;
+}
 function renderBldgs(){
   const box=$('#bldgs'); box.innerHTML='';
   S.gens.forEach((g,i)=>{
     const prev=i===0||S.gens[i-1].n>0;
     const cost=genCost(g),can=S.bananas>=cost;
+    const nMax=prev?maxAffordable(g):0;
     const it=el('div','item'+(prev?'':' locked'));
     it.innerHTML=`<img src="${sprite(g.spr)}">
       <div><div class="name">${prev?g.name:'???'}</div>
       <div class="meta">${prev?('+'+fmt(g.prod)+'/s each'+(g.ecap?' ⚡+'+g.ecap+' cap':'')):'unlock previous'}</div></div>
       <div class="right"><div class="cost ${can?'':'cant'}">${fmt(cost)} 🍌</div>
-      <div class="own">owned ${g.n}</div></div>`;
-    if(prev) it.onclick=()=>{
-      if(S.bananas>=genCost(g)){S.bananas-=genCost(g);g.n++;
-        if(g.ecap)S.energy.cap+=g.ecap; sfxBuy(); renderBldgs();renderResBar();}
-    };
+      <div class="own">owned ${g.n}</div>
+      ${nMax>1?`<button class="minibtn bmax" style="margin-top:3px;font-size:7px">MAX ×${nMax>=1000?'1K+':nMax}</button>`:''}</div>`;
+    if(prev){
+      it.onclick=()=>{
+        if(S.bananas>=genCost(g)){S.bananas-=genCost(g);g.n++;
+          if(g.ecap)S.energy.cap+=g.ecap; sfxBuy(); renderBldgs();renderResBar();}
+      };
+      const mb=it.querySelector('.bmax');
+      if(mb) mb.onclick=(e)=>{
+        e.stopPropagation();
+        let bought=0;
+        while(S.bananas>=genCost(g)&&bought<1000){
+          S.bananas-=genCost(g); g.n++; bought++;
+          if(g.ecap)S.energy.cap+=g.ecap;
+        }
+        if(bought){ sfxBuy(); floaty('+'+bought+' '+g.name,'var(--leaf)',12); }
+        renderBldgs(); renderResBar();
+      };
+    }
     box.appendChild(it);
   });
 }
