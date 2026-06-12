@@ -142,6 +142,12 @@ body.shake{animation:shake .35s}
 #comboDisp{font-family:'Press Start 2P';font-size:11px;color:#ff4;text-shadow:0 2px 0 #000;min-height:16px;letter-spacing:1px}
 #comboDisp.hot{color:#f80;animation:comboPulse .4s infinite alternate}
 @keyframes comboPulse{from{transform:scale(1)}to{transform:scale(1.15)}}
+/* welcome-back modal */
+.modal-bg{position:fixed;inset:0;background:rgba(5,12,4,.78);display:flex;align-items:center;justify-content:center;z-index:100;animation:modalIn .25s}
+@keyframes modalIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--panel);border:3px solid var(--line);box-shadow:inset 0 0 0 2px #3a6b28,0 6px 0 var(--line);padding:22px 26px;text-align:center;max-width:360px;margin:0 16px}
+.modal h2{font-family:'Press Start 2P';font-size:13px;color:var(--gold);margin-bottom:12px;text-shadow:0 2px 0 #000}
+.modal .big{font-family:'Press Start 2P';font-size:18px;color:var(--leaf);margin:10px 0;text-shadow:0 2px 0 #000}
 </style>
 </head>
 <body>
@@ -1790,8 +1796,7 @@ function load(){
     const off=Math.min(8*3600,(Date.now()-(o.last||Date.now()))/1000);
     const earned=bananasPerSec()*off*_offPct;
     S.bananas+=earned; S.totalBananas+=earned;
-    const pctLabel=Math.round(_offPct*100)+'%';
-    if(off>10) S._offlineMsg='Away '+Math.floor(off/60)+'m '+Math.floor(off%60)+'s → +'+fmt(earned)+' 🍌 ('+pctLabel+' offline)';
+    if(off>60) S._offline={secs:off,earned,pct:Math.round(_offPct*100)};
   }catch(e){}
 }
 
@@ -1799,7 +1804,22 @@ load();
 initQuests();
 syncIdleBtn();
 syncMuteBtn();
-if(S._offlineMsg){ $('#saveState').textContent=S._offlineMsg; delete S._offlineMsg; }
+if(S._offline){
+  const o=S._offline; delete S._offline;
+  const h=Math.floor(o.secs/3600), m=Math.floor((o.secs%3600)/60);
+  const away=(h>0?h+'h ':'')+m+'m';
+  const bg=el('div','modal-bg');
+  bg.innerHTML=`<div class="modal">
+    <h2>WELCOME BACK!</h2>
+    <img src="${sprite('harunbe_happy')}" style="width:90px;height:90px">
+    <div class="note">You were away for <b style="color:var(--cream)">${away}</b></div>
+    <div class="big">+${fmt(o.earned)} 🍌</div>
+    <div class="note" style="font-size:13px">(${o.pct}% offline rate — upgrade in the shop)</div>
+    <button class="tapbtn" style="margin-top:14px" id="offlineOk">COLLECT</button>
+  </div>`;
+  document.body.appendChild(bg);
+  bg.querySelector('#offlineOk').onclick=()=>{ bg.remove(); sfxBuy(); };
+}
 renderAll();
 requestAnimationFrame(frame);
 setInterval(save,10000);
