@@ -30,7 +30,10 @@ body{
     var(--bg0);
   image-rendering:pixelated; -webkit-font-smoothing:none;
   overflow-x:hidden;
+  touch-action:manipulation; /* no 300ms delay / double-tap zoom on controls */
 }
+button,.tab,.item,#mascot{user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.wrap{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
 img{image-rendering:pixelated}
 .wrap{max-width:920px;margin:0 auto;padding:14px 12px 60px}
 h1{
@@ -1542,6 +1545,12 @@ function bindTap(elm){
   elm.addEventListener('pointerdown',(e)=>{ e.preventDefault(); tap(e); });
 }
 bindTap($('#mascot')); bindTap($('#tapBtn'));
+// Spacebar taps too (desktop) — held-key auto-repeat excluded
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&!e.repeat&&(e.target===document.body||e.target.tagName==='BUTTON')){
+    e.preventDefault(); tap();
+  }
+});
 
 $('#rebirthBtn').onclick=()=>{
   const gain=Math.floor(Math.sqrt(S.totalBananas/TUNE.rebirthDiv)); if(gain<1)return;
