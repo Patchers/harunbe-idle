@@ -765,6 +765,7 @@ function fmt(n){
 const $=s=>document.querySelector(s);
 const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
 
+let _resSpans=null;
 function renderResBar(){
   const defs=[
     ['res_banana','bananas',S.bananas],['res_coin','coins',S.coins],
@@ -772,12 +773,19 @@ function renderResBar(){
     ['res_magic','magic',S.magic.cap-S.magic.used,S.magic.cap],
     ['res_token','tokens',S.tokens],['res_gem','gems',S.gems],
   ];
-  const bar=$('#resBar'); bar.innerHTML='';
-  defs.forEach(d=>{
-    const r=el('div','res');
+  const bar=$('#resBar');
+  if(!_resSpans){
+    bar.innerHTML='';
+    _resSpans=defs.map(d=>{
+      const r=el('div','res');
+      r.innerHTML=`<img src="${sprite(d[0])}"><span class="v"></span><span class="lbl">${d[1]}</span>`;
+      bar.appendChild(r);
+      return r.querySelector('.v');
+    });
+  }
+  defs.forEach((d,i)=>{
     const v=d[3]!=null?fmt(d[2])+'/'+fmt(d[3]):fmt(d[2]);
-    r.innerHTML=`<img src="${sprite(d[0])}"><span class="v">${v}</span><span class="lbl">${d[1]}</span>`;
-    bar.appendChild(r);
+    if(_resSpans[i].textContent!==v) _resSpans[i].textContent=v;
   });
 }
 
@@ -1600,12 +1608,22 @@ function tick(dt){
 }
 let achAcc=0;
 
-let prev=performance.now(), uiAcc=0;
+// Panels rebuild their DOM wholesale; doing that while the user's pointer is
+// down destroys the pressed button between mousedown and mouseup, so the
+// browser never fires its click. Defer re-renders until the pointer is up.
+let pointerHeld=false;
+document.addEventListener('pointerdown',()=>{pointerHeld=true;},true);
+document.addEventListener('pointerup',()=>{pointerHeld=false;},true);
+document.addEventListener('pointercancel',()=>{pointerHeld=false;},true);
+window.addEventListener('blur',()=>{pointerHeld=false;});
+
+let prev=performance.now(), uiAcc=0, _lastMood='';
 function frame(now){
   const dt=Math.min(0.25,(now-prev)/1000); prev=now;
   tick(dt); uiAcc+=dt; achAcc+=dt; if(achAcc>3){achAcc=0;checkAch();}
-  const [mspr,mtxt]=mood(); $('#mascot').src=sprite(mspr); $('#mood').textContent=mtxt;
-  if(uiAcc>0.2){
+  const [mspr,mtxt]=mood();
+  if(mspr!==_lastMood){ _lastMood=mspr; $('#mascot').src=sprite(mspr); $('#mood').textContent=mtxt; }
+  if(uiAcc>0.2&&!pointerHeld){
     uiAcc=0; renderResBar();
     const av=document.querySelector('.view[data-view="adv"]');
     if(av.classList.contains('active')) renderAdv();
