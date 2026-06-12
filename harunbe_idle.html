@@ -132,6 +132,16 @@ h1{
 .ach-item.locked{opacity:.45}
 .ach-unlocked .iname{color:var(--gold)}
 .combo-floaty{color:#ff4;font-size:13px}
+/* juice: particles, shake, combo meter, mascot pop */
+.particle{position:fixed;pointer-events:none;font-size:22px;z-index:60;animation:part .8s ease-out forwards}
+@keyframes part{to{transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.4);opacity:0}}
+body.shake{animation:shake .35s}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-7px,4px)}40%{transform:translate(6px,-5px)}60%{transform:translate(-5px,3px)}80%{transform:translate(3px,-2px)}}
+#mascot.pop{animation:pop .14s}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.1)}100%{transform:scale(1)}}
+#comboDisp{font-family:'Press Start 2P';font-size:11px;color:#ff4;text-shadow:0 2px 0 #000;min-height:16px;letter-spacing:1px}
+#comboDisp.hot{color:#f80;animation:comboPulse .4s infinite alternate}
+@keyframes comboPulse{from{transform:scale(1)}to{transform:scale(1.15)}}
 </style>
 </head>
 <body>
@@ -144,6 +154,7 @@ h1{
       <div class="grow stage">
         <img id="mascot" alt="Harunbe">
         <div class="mood" id="mood">idle</div>
+        <div id="comboDisp"></div>
         <button class="tapbtn" id="tapBtn">TAP HARUNBE (+bananas)</button>
       </div>
       <div class="grow">
@@ -232,7 +243,8 @@ h1{
   </div>
 
   <div class="foot">
-    auto-saves locally • <span id="saveState"></span> &nbsp;|&nbsp; <span class="kbd">REAL_SPRITES</span> block = sprite swap point
+    <button class="minibtn" id="muteBtn" title="Toggle sound">🔊</button> &nbsp;
+    auto-saves locally • <span id="saveState"></span>
   </div>
 </div>
 
@@ -681,7 +693,7 @@ const S={
   rebirths:0, tokens:0, last:Date.now(),
   mines:{energy:0,magic:0},
   offlineTier:0,
-  bestCombo:0, totalTaps:0,
+  bestCombo:0, totalTaps:0, muted:false,
   pomodoro:{potions:0, active:false, startMs:0, boostEnds:0, boostMult:1},
   buy10xUnlocked:false, buy10xOn:false,
   shop:{
@@ -802,7 +814,7 @@ function renderBldgs(){
       <div class="own">owned ${g.n}</div></div>`;
     if(prev) it.onclick=()=>{
       if(S.bananas>=genCost(g)){S.bananas-=genCost(g);g.n++;
-        if(g.ecap)S.energy.cap+=g.ecap; renderBldgs();renderResBar();}
+        if(g.ecap)S.energy.cap+=g.ecap; sfxBuy(); renderBldgs();renderResBar();}
     };
     box.appendChild(it);
   });
@@ -1057,6 +1069,7 @@ function checkAch(){
     if(!S.ach.includes(ac.id)&&ac.check()){
       S.ach.push(ac.id);
       floaty('🏆 '+ac.name);
+      sfxAch();
     }
   });
 }
@@ -1319,7 +1332,7 @@ function renderShop(){
           item.buy(); bought++;
         }
       }
-      if(bought>0) floaty(item.name+(bought>1?` ×${bought}`:'')+'!','var(--leaf)',13);
+      if(bought>0){ floaty(item.name+(bought>1?` ×${bought}`:'')+'!','var(--leaf)',13); sfxBuy(); }
       renderShop(); renderResBar();
     };
   });
@@ -1364,7 +1377,49 @@ function mood(){
   return ['harunbe_idle','idle'];
 }
 
-function tap(){
+/* ── FX: sound + particles + combo meter ─────────────────────────────────── */
+let _ac=null;
+function _audio(){
+  if(S.muted) return null;
+  if(!_ac){ try{_ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return null;} }
+  if(_ac.state==='suspended') _ac.resume();
+  return _ac;
+}
+function beep(freq,dur,type,vol,delay){
+  const ac=_audio(); if(!ac) return;
+  const t=ac.currentTime+(delay||0);
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type=type||'square'; o.frequency.value=freq;
+  g.gain.setValueAtTime(vol||0.04,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(t); o.stop(t+dur);
+}
+function sfxTap(combo){ beep(420+Math.min(combo,50)*14,0.06,'square',0.03); }
+function sfxBuy(){ beep(660,0.07,'square',0.04); beep(880,0.09,'square',0.04,0.07); }
+function sfxCombo(){ [523,659,784,1047].forEach((f,i)=>beep(f,0.1,'square',0.05,i*0.07)); }
+function sfxBoss(){ beep(110,0.3,'sawtooth',0.07); beep(82,0.4,'sawtooth',0.07,0.1); }
+function sfxAch(){ [784,988,1175].forEach((f,i)=>beep(f,0.12,'triangle',0.05,i*0.09)); }
+
+function burst(x,y,emoji,count){
+  for(let i=0;i<(count||5);i++){
+    const p=el('div','particle'); p.textContent=emoji||'🍌';
+    const ang=Math.random()*Math.PI*2, dist=40+Math.random()*70;
+    p.style.left=(x-10)+'px'; p.style.top=(y-10)+'px';
+    p.style.setProperty('--dx',Math.cos(ang)*dist+'px');
+    p.style.setProperty('--dy',(Math.sin(ang)*dist-50)+'px');
+    p.style.setProperty('--rot',(Math.random()*540-270)+'deg');
+    document.body.appendChild(p); setTimeout(()=>p.remove(),850);
+  }
+}
+function shake(){ document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); }
+function updateComboDisp(){
+  const d=$('#comboDisp'); if(!d) return;
+  if(tapCombo>=5){ d.textContent='COMBO ×'+tapCombo; d.className=tapCombo>=50?'hot':''; }
+  else { d.textContent=''; d.className=''; }
+}
+
+function tap(e){
   const amt=S.click*nguClickMult()*tokenMult();
   S.bananas+=amt; S.totalBananas+=amt; lastTap=Date.now(); recentTap=true;
   S.totalTaps=(S.totalTaps||0)+1;
@@ -1375,7 +1430,16 @@ function tap(){
   const prevCombo=tapCombo; tapCombo++;
   if(S.bestCombo==null||tapCombo>S.bestCombo) S.bestCombo=tapCombo;
   if(comboTimer) clearTimeout(comboTimer);
-  comboTimer=setTimeout(()=>{tapCombo=0;},COMBO_RESET_MS);
+  comboTimer=setTimeout(()=>{tapCombo=0;updateComboDisp();},COMBO_RESET_MS);
+
+  // FX
+  sfxTap(tapCombo);
+  const m=$('#mascot'), mr=m.getBoundingClientRect();
+  const fx=e&&e.clientX?e.clientX:mr.left+mr.width/2;
+  const fy=e&&e.clientY?e.clientY:mr.top+mr.height/2;
+  burst(fx,fy,'🍌',tapCombo%25===0?10:3);
+  m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop');
+  updateComboDisp();
 
   let milestoneFired=false;
 
@@ -1387,6 +1451,7 @@ function tap(){
     S.bananas+=bonus; S.totalBananas+=bonus;
     floaty('⚡ ULTRA ×'+ultraMult+'!','#f80',17);
     floaty('+'+fmt(bonus)+'💥','var(--gold)',12);
+    sfxCombo(); shake(); burst(fx,fy,'💥',12);
     milestoneFired=true;
   }
   // ── BASIC COMBO: every 25 taps (but not on 100-tap ultra) ───────────────────
@@ -1395,6 +1460,7 @@ function tap(){
     S.bananas+=bonus; S.totalBananas+=bonus;
     floaty('COMBO ×10!','#ff4',13);
     floaty('+'+fmt(bonus),'var(--gold)',10);
+    sfxCombo();
     milestoneFired=true;
   }
   // ── Micro-burst every 5 taps ────────────────────────────────────────────────
@@ -1444,7 +1510,7 @@ function floaty(t,color,size){
 // requires mousedown+mouseup on the same element, and the press-shift can
 // move the element out from under the cursor before mouseup fires.
 function bindTap(elm){
-  elm.addEventListener('pointerdown',(e)=>{ e.preventDefault(); tap(); });
+  elm.addEventListener('pointerdown',(e)=>{ e.preventDefault(); tap(e); });
 }
 bindTap($('#mascot')); bindTap($('#tapBtn'));
 
@@ -1460,6 +1526,9 @@ $('#rebirthBtn').onclick=()=>{
   S.adv.zoneKills=0; S.adv.isBoss=false;
   renderAll(); save();
 };
+
+function syncMuteBtn(){ $('#muteBtn').textContent=S.muted?'🔇':'🔊'; }
+$('#muteBtn').onclick=()=>{ S.muted=!S.muted; syncMuteBtn(); if(!S.muted) sfxBuy(); };
 
 function syncIdleBtn(){ $('#idleE').textContent='Auto-split Energy: '+(S.idleE?'ON':'OFF'); }
 $('#idleE').onclick=()=>{
@@ -1578,6 +1647,9 @@ function tick(dt){
     if(a.isBoss){
       // Boss defeated → gems + guaranteed gear drop + zone advance
       S.gems+=a.zone; a.bossKills=(a.bossKills||0)+1;
+      sfxBoss(); shake();
+      const er=$('#advEnemy').getBoundingClientRect();
+      if(er.width) burst(er.left+er.width/2,er.top+er.height/2,'💎',8);
       const slot=Math.floor(Math.random()*5);
       if(a.inventory.length<30) a.inventory.push(rollGear(a.zone,slot,true));
       a.isBoss=false; a.zoneKills=0; a.zone++;
@@ -1700,6 +1772,7 @@ function load(){
     if(typeof S.offlineTier!=='number')  S.offlineTier=0;
     if(typeof S.bestCombo!=='number')    S.bestCombo=0;
     if(typeof S.totalTaps!=='number')    S.totalTaps=0;
+    if(typeof S.muted!=='boolean')       S.muted=false;
     if(!S.pomodoro||typeof S.pomodoro!=='object') S.pomodoro={potions:0,active:false,startMs:0,boostEnds:0,boostMult:1};
     if(typeof S.buy10xUnlocked!=='boolean') S.buy10xUnlocked=false;
     if(typeof S.buy10xOn!=='boolean') S.buy10xOn=false;
@@ -1725,6 +1798,7 @@ function load(){
 load();
 initQuests();
 syncIdleBtn();
+syncMuteBtn();
 if(S._offlineMsg){ $('#saveState').textContent=S._offlineMsg; delete S._offlineMsg; }
 renderAll();
 requestAnimationFrame(frame);
