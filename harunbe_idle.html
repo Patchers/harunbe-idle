@@ -233,8 +233,11 @@ body.shake{animation:shake .35s}
       <div class="note" id="rebirthNote"></div>
       <div class="minirow" style="margin-top:10px"><button class="tapbtn" id="rebirthBtn">REBIRTH</button></div>
       <div class="minirow" style="margin-top:14px;border-top:1px solid var(--mid);padding-top:12px">
-        <button class="minibtn" id="resetBtn" style="color:var(--red);border-color:var(--red)">⚠ RESET ALL DATA</button>
+        <button class="minibtn" id="exportBtn">📋 EXPORT SAVE</button>
+        <button class="minibtn" id="importBtn">📥 IMPORT SAVE</button>
+        <button class="minibtn" id="resetBtn" style="color:var(--red);border-color:var(--red);margin-left:auto">⚠ RESET ALL DATA</button>
       </div>
+      <div class="note" style="margin-top:6px;font-size:13px">Export copies your save to the clipboard — paste it into Import on another device to transfer progress.</div>
     </div>
   </div>
 
@@ -1551,6 +1554,33 @@ $('#rebirthBtn').onclick=()=>{
   S.energy={cap:100,used:0,rate:6}; S.magic={cap:60,used:0,rate:3};
   S.adv.zoneKills=0; S.adv.isBoss=false;
   renderAll(); save();
+};
+
+/* ── Export / Import save ─────────────────────────────────────────────────── */
+const SAVE_MAGIC='HARUNBE1:';
+$('#exportBtn').onclick=async()=>{
+  save();
+  const code=SAVE_MAGIC+btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+  try{
+    await navigator.clipboard.writeText(code);
+    floaty('Save copied to clipboard!','var(--leaf)',13);
+  }catch(e){
+    prompt('Copy your save code:',code);
+  }
+};
+$('#importBtn').onclick=()=>{
+  const code=prompt('Paste your save code:');
+  if(!code) return;
+  if(!code.startsWith(SAVE_MAGIC)){ floaty('Invalid save code!','var(--red)',13); return; }
+  try{
+    const o=JSON.parse(decodeURIComponent(escape(atob(code.slice(SAVE_MAGIC.length)))));
+    if(typeof o.totalBananas!=='number') throw new Error('bad save');
+    if(!confirm('Import this save? Your current progress will be replaced.\n\n'+
+      'Incoming: '+fmt(o.totalBananas)+' total bananas, '+(o.rebirths||0)+' rebirths')) return;
+    window.removeEventListener('beforeunload',save);
+    localStorage.setItem('harunbe_idle',JSON.stringify(o));
+    location.reload();
+  }catch(e){ floaty('Invalid save code!','var(--red)',13); }
 };
 
 function syncMuteBtn(){ $('#muteBtn').textContent=S.muted?'🔇':'🔊'; }
