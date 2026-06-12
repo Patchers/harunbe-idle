@@ -266,40 +266,7 @@ body.shake{animation:shake .35s}
    Fill REAL_SPRITES with paths to your PNGs; missing names fall back to
    the generated placeholder below.
    ========================================================================= */
-const REAL_SPRITES = {
-  harunbe_idle:    "sprites/harunbe_idle.png",
-  harunbe_happy:   "sprites/harunbe_happy.png",
-  harunbe_angry:   "sprites/harunbe_angry.png",
-  harunbe_work:    "sprites/harunbe_work.png",
-  harunbe_sleep:   "sprites/harunbe_sleep.png",
-  harunbe_evolved: "sprites/harunbe_evolved.png",
-  res_banana:      "sprites/res_banana.png",
-  res_coin:        "sprites/res_coin.png",
-  res_energy:      "sprites/res_energy.png",
-  res_magic:       "sprites/res_magic.png",
-  res_gem:         "sprites/res_gem.png",
-  res_token:       "sprites/res_token.png",
-  bldg_outpost:    "sprites/bldg_outpost.png",
-  bldg_plantation: "sprites/bldg_plantation.png",
-  bldg_lab:        "sprites/bldg_lab.png",
-  bldg_generator:  "sprites/bldg_generator.png",
-  bldg_trade:      "sprites/bldg_trade.png",
-  up:              "sprites/up.png",
-  gear:            "sprites/gear.png",
-  ngu:             "sprites/ngu.png",
-  core:            "sprites/core.png",
-  augment:         "sprites/augment.png",
-  quest:           "sprites/quest.png",
-  daily:           "sprites/daily.png",
-  click_fx:        "sprites/click_fx.png",
-  shop:            "sprites/shop.png",
-  potion:          "sprites/potion.png",
-  shield:          "sprites/shield.png",
-  trophy:          "sprites/trophy.png",
-  enemy_poacher:   "sprites/enemy_poacher.png",
-  boss:            "sprites/boss.png",
-  ally_explorer:   "sprites/ally_explorer.png",
-};
+const REAL_SPRITES = {};
 
 /* ── PROGRESSION TUNING ────────────────────────────────────────────────────
    Three numbers — change only these to go faster/slower:
@@ -357,6 +324,120 @@ const I_ALLY  =["...gggg.....","..gGGGGg....","..gGFFGg....","..gGFFGg....","..g
 const I_GEAR  =["...KKKK.....","..KWWWWK....","..KWUUWK....","..KWUUWK....","..KWWWWK....","...KKKK.....","............","............","............","............","............","............"];
 const I_NGU   =["..M..M..M...",".MmMMmMMm...","MMMMMMMMMM..",".MmMMmMMm...","..M.YY.M....","....YY......","...YYYY.....","..YYMMYY....",".YY.MM.YY...","............","............","............"];
 const I_CORE  =["....UU......","..UUuuUU....",".UuuMMuuU...","UuuMWWMuuU..","UuuMWWMuuU..",".UuuMMuuU...","..UUuuUU....","....UU......","............","............","............","............"];
+
+/* Enemy tier sprites — one unique villain per tier */
+const I_POACHER2=[  // khaki hunter, black hat, rifle at his side
+  "....kkkk....",
+  "...kkkkkk...",
+  "....FFFF....",
+  "...FEFFEF...",
+  "....FFFF....",
+  "...bbbbbb..k",
+  "..bGGGGGGb.k",
+  "..bG.GG.Gbkk",
+  "...bGGGGb...",
+  "....G..G....",
+  "...b....b...",
+  "...b....b...",
+];
+const I_BANDIT=[  // grey thug, red bandana mask
+  "....KKKK....",
+  "...KKKKKK...",
+  "...RRRRRR...",
+  "...FEFFEF...",
+  "....RRRR....",
+  "...KKKKKK...",
+  "..KKKKKKKK..",
+  "..K.KKKK.K..",
+  "...KKKKKK...",
+  "....K..K....",
+  "...k....k...",
+  "............",
+];
+const I_RAIDER=[  // tomb raider, wide sand hat, orange coat
+  "..yyyyyyyy..",
+  ".yyyyyyyyyy.",
+  "....FFFF....",
+  "...FEFFEF...",
+  "....FFFF....",
+  "...OOOOOO...",
+  "..OOYOOYOO..",
+  "..O.OOOO.O..",
+  "...OOOOOO...",
+  "....O..O....",
+  "...y....y...",
+  "............",
+];
+const I_CULTIST=[  // hooded purple robe, glowing eyes in the dark
+  "....mmmm....",
+  "...mmmmmm...",
+  "..mmkkkkmm..",
+  "..mkYkkYkm..",
+  "..mmkkkkmm..",
+  "..mMMMMMMm..",
+  ".mMMmMMmMMm.",
+  ".mMMMMMMMMm.",
+  ".mmMMMMMMmm.",
+  "..mmMMMMmm..",
+  "...mmmmmm...",
+  "............",
+];
+const I_VOID=[  // void walker — black wisp, burning blue eyes
+  "....kkkk....",
+  "..kkkkkkkk..",
+  ".kkkUkkUkkk.",
+  ".kkkkkkkkkk.",
+  "..kkkkkkkk..",
+  "..kkkkkkkk..",
+  ".kkukkkkukk.",
+  ".kkkkkkkkkk.",
+  "..kk.kk.kk..",
+  "..k..kk..k..",
+  "....k..k....",
+  "............",
+];
+const I_SHADOWLORD=[  // crowned shadow, red eyes
+  "..m..mm..m..",
+  "..mmmmmmmm..",
+  "...kkkkkk...",
+  "..kkRkkRkk..",
+  "...kkkkkk...",
+  "..mkkkkkkm..",
+  ".mmkkkkkkmm.",
+  ".m.kkkkkk.m.",
+  "...kkkkkk...",
+  "....kkkk....",
+  "...kk..kk...",
+  "............",
+];
+const I_DRAGON=[  // horned dragon head breathing fire
+  "..y......y..",
+  "..yG....Gy..",
+  "...GGGGGG...",
+  "..GGGGGGGG..",
+  ".GGRGGGGRGG.",
+  ".GGGGGGGGGG.",
+  "..gGGGGGGg..",
+  "..ggWWWWgg..",
+  "...gggggg...",
+  "..O..OO..O..",
+  "...O.OO.O...",
+  "....OOOO....",
+];
+const I_CELESTIAL=[  // radiant gold-and-white seraph
+  "....YYYY....",
+  "..Y.YWWY.Y..",
+  ".Y.YWWWWY.Y.",
+  "..YWWUUWWY..",
+  "..YWWWWWWY..",
+  ".Y.WWWWWW.Y.",
+  "..YWWWWWWY..",
+  "...YWWWWY...",
+  "..Y.YWWY.Y..",
+  "....YYYY....",
+  "...Y....Y...",
+  "............",
+];
 
 /* Phase B sprites */
 const I_BOSS=[
@@ -505,7 +586,11 @@ const PH={
   bldg_outpost:px(I_HUT,P,6),  bldg_plantation:px(I_PLANT,P,6),
   bldg_lab:px(I_LAB,P,6),      bldg_generator:px(I_GEN,P,6),
   bldg_trade:px(I_TRADE,P,6),  up:px(I_UP,P,5),
-  enemy_poacher:px(I_POACH,P,7), ally_explorer:px(I_ALLY,P,7),
+  enemy_poacher:px(I_POACHER2,P,7), ally_explorer:px(I_ALLY,P,7),
+  enemy_bandit:px(I_BANDIT,P,7),   enemy_raider:px(I_RAIDER,P,7),
+  enemy_cultist:px(I_CULTIST,P,7), enemy_void:px(I_VOID,P,7),
+  boss_shadow:px(I_SHADOWLORD,P,7),boss_dragon:px(I_DRAGON,P,7),
+  boss_celestial:px(I_CELESTIAL,P,7),
   gear:px(I_GEAR,P,6), ngu:px(I_NGU,P,6), core:px(I_CORE,P,6),
   boss:px(I_BOSS,P,7), trophy:px(I_TROPHY,P,6),
   augment:px(I_AUGMENT,P,6),
@@ -538,14 +623,14 @@ const ITEM_NAMES=[
    'Void Shard',   'Celestial Orb', 'Storm Jewel',    'Eternal Gem'     ],
 ];
 const ENEMY_TIERS=[
-  {name:'Poacher',     spr:'enemy_poacher',hpMult:1.0, dmgMult:1.0, minZone:1 },
-  {name:'Bandit',      spr:'enemy_poacher',hpMult:1.4, dmgMult:1.3, minZone:3 },
-  {name:'Tomb Raider', spr:'enemy_poacher',hpMult:1.9, dmgMult:1.7, minZone:5 },
-  {name:'Cultist',     spr:'enemy_poacher',hpMult:2.6, dmgMult:2.2, minZone:8 },
-  {name:'Void Walker', spr:'enemy_poacher',hpMult:3.8, dmgMult:3.1, minZone:11},
-  {name:'Shadow Lord', spr:'boss',          hpMult:5.5, dmgMult:4.5, minZone:14},
-  {name:'Dragon',      spr:'boss',          hpMult:8.0, dmgMult:6.5, minZone:17},
-  {name:'Celestial',   spr:'boss',          hpMult:12., dmgMult:9.0, minZone:20},
+  {name:'Poacher',     spr:'enemy_poacher', bossSpr:'boss',          hpMult:1.0, dmgMult:1.0, minZone:1 },
+  {name:'Bandit',      spr:'enemy_bandit',  bossSpr:'boss',          hpMult:1.4, dmgMult:1.3, minZone:3 },
+  {name:'Tomb Raider', spr:'enemy_raider',  bossSpr:'boss',          hpMult:1.9, dmgMult:1.7, minZone:5 },
+  {name:'Cultist',     spr:'enemy_cultist', bossSpr:'boss',          hpMult:2.6, dmgMult:2.2, minZone:8 },
+  {name:'Void Walker', spr:'enemy_void',    bossSpr:'boss',          hpMult:3.8, dmgMult:3.1, minZone:11},
+  {name:'Shadow Lord', spr:'boss_shadow',   bossSpr:'boss_shadow',   hpMult:5.5, dmgMult:4.5, minZone:14},
+  {name:'Dragon',      spr:'boss_dragon',   bossSpr:'boss_dragon',   hpMult:8.0, dmgMult:6.5, minZone:17},
+  {name:'Celestial',   spr:'boss_celestial',bossSpr:'boss_celestial',hpMult:12., dmgMult:9.0, minZone:20},
 ];
 
 /* Phase C — augment definitions */
@@ -998,7 +1083,8 @@ function renderAdv(){
   $('#heroStats').textContent='HP '+Math.ceil(a.hp)+'/'+hMax;
 
   // Enemy
-  $('#advEnemy').src=sprite(a.isBoss?'boss':tier.spr);
+  $('#advEnemy').src=sprite(a.isBoss?tier.bossSpr:tier.spr);
+  $('#advEnemy').style.filter=a.isBoss?'drop-shadow(0 0 6px var(--red))':'';
   $('#enemyHp').style.width=Math.max(0,a.enemyHp/eMax*100)+'%';
   $('#enemyStats').textContent=(a.isBoss?'★ BOSS ':'')+tier.name+
     ' HP '+Math.ceil(Math.max(0,a.enemyHp));
@@ -1190,7 +1276,7 @@ function renderShop(){
   const boostActive=pom.boostEnds&&Date.now()<pom.boostEnds;
   const boostLeft=boostActive?Math.max(0,Math.ceil((pom.boostEnds-Date.now())/1000)):0;
   const pomBarW=pomActive?Math.min(100,Math.round(pomElapsed/(25*600)))+'%':'0%';
-  const canStartPom=S.coins>=100;
+  const canStartPom=S.coins>=1000;
   let html=`<h2>SHOP 🏪</h2>
   <div class="note" style="margin-bottom:8px">
     Coins: <span style="color:var(--gold)">${fmt(S.coins)} 🪙</span> &nbsp;•&nbsp;
@@ -1204,11 +1290,12 @@ function renderShop(){
     </div>
     ${boostActive?`<div style="color:var(--leaf);margin-bottom:6px">⚡ POTION ACTIVE ×${pom.boostMult||1} — ${Math.floor(boostLeft/60)}m ${boostLeft%60}s left</div>`:''}
     ${pomActive?`
-      <div class="note" style="margin-bottom:4px">Stay idle — <span style="color:var(--leaf)">${pomSecsDisp} remaining</span> • production ×1.5 🍌</div>
+      <div class="note" style="margin-bottom:4px">Stay idle — <span style="color:var(--leaf)">${pomSecsDisp} remaining</span> • production ×1.5 🍌
+        • <span style="color:${(pom.breaks||0)>=3?'var(--red)':'var(--dim)'}">breaks ${pom.breaks||0}/5</span></div>
       <div class="bar e" style="margin-bottom:8px"><i style="width:${pomBarW};background:var(--blue)"></i></div>
-    `:`<div class="note" style="margin-bottom:6px">25-min idle session → earn potion 🧪 • costs 100 🪙 to start</div>`}
+    `:`<div class="note" style="margin-bottom:6px">25-min idle session → earn potion 🧪 • costs 1000 🪙 to start • 5 breaks cancels it</div>`}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="startPomodoro()" style="flex:1;${!pomActive&&!canStartPom?'opacity:.45;pointer-events:none':''}">${pomActive?'⏹ CANCEL':'▶ START (100 🪙)'}</button>
+      <button onclick="startPomodoro()" style="flex:1;${!pomActive&&!canStartPom?'opacity:.45;pointer-events:none':''}">${pomActive?'⏹ CANCEL':'▶ START (1000 🪙)'}</button>
       ${potions>0&&!boostActive?`<button onclick="activatePotion()" style="flex:1;background:var(--blue)">🧪 ACTIVATE ×${potionBoostMult} (${potions} 🧪)</button>`:''}
       ${potions===0&&!boostActive?`<button disabled style="flex:1;opacity:.4">🧪 No potions yet</button>`:''}
     </div>
@@ -1510,8 +1597,9 @@ function startPomodoro(){
   if(!S.pomodoro) S.pomodoro={potions:0,active:false,startMs:0,boostEnds:0,boostMult:1};
   if(S.pomodoro.active){ S.pomodoro.active=false; floaty('🍅 Pomodoro cancelled','#f44',13); }
   else {
-    if(S.coins<100){floaty('Need 100 🪙 to start!','var(--red)',13);return;}
-    S.coins-=100;
+    if(S.coins<1000){floaty('Need 1000 🪙 to start!','var(--red)',13);return;}
+    S.coins-=1000;
+    S.pomodoro.breaks=0;
     S.pomodoro.active=true; S.pomodoro.startMs=Date.now(); pomLastInteract=Date.now();
     floaty('🍅 Pomodoro started! Stay idle for 25min','#0af',13);
   }
@@ -1662,13 +1750,26 @@ function tick(dt){
     const elapsed=Date.now()-S.pomodoro.startMs;
     const interacted=pomLastInteract>S.pomodoro.startMs;
     if(interacted){
-      // Interaction detected — cancel this session, reset timer
-      S.pomodoro.startMs=Date.now();
-      pomLastInteract=Date.now();
+      // Interaction detected — count a break (one per 3s burst), restart timer.
+      // Five breaks cancels the whole session.
+      const now=Date.now();
+      if(now-(S.pomodoro.lastBreakAt||0)>3000){
+        S.pomodoro.lastBreakAt=now;
+        S.pomodoro.breaks=(S.pomodoro.breaks||0)+1;
+        if(S.pomodoro.breaks>=5){
+          S.pomodoro.active=false;
+          floaty('🍅 POMODORO CANCELLED — 5 breaks!','#f44',15);
+        } else {
+          floaty('🍅 Break '+S.pomodoro.breaks+'/5 — timer reset','#f80',13);
+        }
+      }
+      S.pomodoro.startMs=now;
+      pomLastInteract=now;
     } else if(elapsed>=25*60*1000){
       // Completed without interaction!
       S.pomodoro.potions=Math.min(4,(S.pomodoro.potions||0)+1);
       S.pomodoro.startMs=Date.now(); // auto-start next session
+      S.pomodoro.breaks=0;           // fresh strikes for the next session
       pomLastInteract=Date.now();
       floaty('🧪 POMODORO COMPLETE! +1 Potion','#0af',16);
     }
