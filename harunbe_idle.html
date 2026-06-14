@@ -1167,6 +1167,44 @@ const ACHIEVEMENTS=[
   {id:'sanctuary',   name:'Awakened',      desc:'Discover the Magical Ape Sanctuary',check:()=>!!(S.sanctuary&&S.sanctuary.unlocked)},
   {id:'archmage',    name:'Archmage',      desc:'Cast 50 spells',                    check:()=>!!(S.sanctuary&&S.sanctuary.lifetimeCasts>=50)},
   {id:'ritualist',   name:'Ritualist',     desc:'Perform a Magical Ritual',          check:()=>!!(S.sanctuary&&S.sanctuary.rituals>=1)},
+  // ── 30+ extra achievements ──
+  {id:'mil',         name:'Millionaire',   desc:'Earn 1,000,000 total bananas',      check:()=>S.totalBananas>=1e6},
+  {id:'bil',         name:'Billionaire',   desc:'Earn 1 billion total bananas',      check:()=>S.totalBananas>=1e9},
+  {id:'tril',        name:'Trillionaire',  desc:'Earn 1 trillion total bananas',     check:()=>S.totalBananas>=1e12},
+  {id:'coin100k',    name:'Coin Vault',    desc:'Hold 100,000 coins',                check:()=>S.coins>=100000},
+  {id:'gem100',      name:'Gem Collector', desc:'Hold 100 gems',                     check:()=>S.gems>=100},
+  {id:'gem1k',       name:'Gem Hoarder',   desc:'Hold 1,000 gems',                   check:()=>S.gems>=1000},
+  {id:'tok10',       name:'Token Holder',  desc:'Hold 10 rebirth tokens',            check:()=>S.tokens>=10},
+  {id:'tok100',      name:'Token Tycoon',  desc:'Hold 100 rebirth tokens',           check:()=>S.tokens>=100},
+  {id:'zone15',      name:'Void Bound',    desc:'Reach adventure zone 15',           check:()=>S.adv.zone>=15},
+  {id:'zone20',      name:"World's End",   desc:'Reach adventure zone 20',           check:()=>S.adv.zone>=20},
+  {id:'kills5k',     name:'Slaughterhouse',desc:'Defeat 5,000 enemies',              check:()=>S.adv.kills>=5000},
+  {id:'kills10k',    name:'Exterminator',  desc:'Defeat 10,000 enemies',             check:()=>S.adv.kills>=10000},
+  {id:'boss10',      name:'Boss Hunter',   desc:'Defeat 10 bosses',                  check:()=>(S.adv.bossKills||0)>=10},
+  {id:'boss25',      name:'Boss Master',   desc:'Defeat 25 bosses',                  check:()=>(S.adv.bossKills||0)>=25},
+  {id:'boss50',      name:'Apex Predator', desc:'Defeat 50 bosses',                  check:()=>(S.adv.bossKills||0)>=50},
+  {id:'bld50',       name:'Developer',     desc:'Own 50 buildings total',            check:()=>S.gens.reduce((a,g)=>a+g.n,0)>=50},
+  {id:'bld100',      name:'Tycoon',        desc:'Own 100 buildings total',           check:()=>S.gens.reduce((a,g)=>a+g.n,0)>=100},
+  {id:'bld250',      name:'Jungle Empire', desc:'Own 250 buildings total',           check:()=>S.gens.reduce((a,g)=>a+g.n,0)>=250},
+  {id:'reb10',       name:'Reincarnated',  desc:'Complete 10 rebirths',              check:()=>S.rebirths>=10},
+  {id:'reb15',       name:'Eternal',       desc:'Complete 15 rebirths',              check:()=>S.rebirths>=15},
+  {id:'reb25',       name:'Immortal',      desc:'Complete 25 rebirths',              check:()=>S.rebirths>=25},
+  {id:'magic100',    name:'Sorcerer',      desc:'Reach Magic level 100',             check:()=>S.wandoos.lvl>=100},
+  {id:'ngu100',      name:'NP Legend',     desc:'Any NP slot reach level 100',       check:()=>S.ngu.some(s=>s.lvl>=100)},
+  {id:'aug25',       name:'Augmented II',  desc:'Reach augment level 25',            check:()=>S.augs.some(a=>a.lvlAug>=25)},
+  {id:'boostm',      name:'Boost Master',  desc:'Reach augment boost level 10',      check:()=>S.augs.some(a=>(a.lvlBoost||0)>=10)},
+  {id:'tap10k',      name:'Tap Machine',   desc:'Tap 10,000 times',                  check:()=>(S.totalTaps||0)>=10000},
+  {id:'combo50',     name:'Combo King',    desc:'Reach a 50 tap combo',              check:()=>(S.bestCombo||0)>=50},
+  {id:'combo250',    name:'Combo God',     desc:'Reach a 250 tap combo',             check:()=>(S.bestCombo||0)>=250},
+  {id:'quest25',     name:'Quest Master',  desc:'Complete 25 quests',                check:()=>!!(S.quests&&S.quests.totalCompleted>=25)},
+  {id:'quest50',     name:'Questaholic',   desc:'Complete 50 quests',                check:()=>!!(S.quests&&S.quests.totalCompleted>=50)},
+  {id:'streak7',     name:'Dedicated',     desc:'Reach a 7-day daily streak',        check:()=>!!(S.daily&&S.daily.streak>=7)},
+  {id:'miner',       name:'Prospector',    desc:'Own an Energy and a Magic Mine',    check:()=>!!(S.mines&&S.mines.energy>=1&&S.mines.magic>=1)},
+  {id:'alwayson',    name:'Always On',     desc:'Max out the Offline Ticker',        check:()=>S.offlineTier>=OFFLINE_TIERS.length},
+  {id:'packrat',     name:'Pack Rat',      desc:'Fill your inventory (30 items)',    check:()=>S.adv.inventory.length>=30},
+  {id:'geared',      name:'Fully Geared',  desc:'Equip all 5 gear slots',            check:()=>S.adv.gear.every(g=>g)},
+  {id:'ritual5',     name:'Ritual Master', desc:'Perform 5 Magical Rituals',         check:()=>!!(S.sanctuary&&S.sanctuary.rituals>=5)},
+  {id:'spell10',     name:'Spellmaster',   desc:'Take any spell to level 10',        check:()=>!!(S.sanctuary&&Object.values(S.sanctuary.spells||{}).some(sp=>sp.lvl>=10))},
 ];
 
 /* Phase G — offline tiers (bought sequentially) */
@@ -1278,7 +1316,7 @@ const S={
     {name:'Click Power', alloc:0,lvl:0,prog:0,need:40},
     {name:'Jungle Force',alloc:0,lvl:0,prog:0,need:55},
   ],
-  idleE:false,
+  idleE:false, idleEUnlocked:false,
   wandoos:{alloc:0,lvl:0,prog:0,need:50},
   augs:Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100})),
   adv:{
@@ -1300,7 +1338,7 @@ const S={
     permPwr:0, permTgh:0, permHth:0, permRgn:0, permAugBoost:0,
     magicBuys:0, energyBuys:0, clickBuys:0,
     permPwrBuys:0, permTghBuys:0, permHthBuys:0, permRgnBuys:0, permAugBuys:0,
-    jungle2xUnlocked:false, power4xUnlocked:false, battleTonicUnlocked:false, augSplitUnlocked:false,
+    jungle2xUnlocked:false, power4xUnlocked:false, battleTonicUnlocked:false, augSplitUnlocked:false, augBoostSplitUnlocked:false,
   },
   // ── Phase H: Magical Ape Sanctuary ──────────────────────────────────────────
   sanctuary:{
@@ -1673,23 +1711,49 @@ function splitAugEnergy(){
   S.energy.used=nguUsed+wUsed+(perAug*S.augs.length);
   renderAugs(); renderResBar();
 }
+function splitAugBoostEnergy(){
+  pomLastInteract=Date.now();
+  const nguUsed=S.ngu.reduce((a,s)=>a+s.alloc,0);
+  const wUsed=S.wandoos.alloc;
+  const available=S.energy.cap-nguUsed-wUsed;
+  const perAug=Math.floor(available/S.augs.length);
+  S.augs.forEach(aug=>{aug.eBoost=perAug;aug.eAug=0;});
+  S.energy.used=nguUsed+wUsed+(perAug*S.augs.length);
+  renderAugs(); renderResBar();
+}
 function renderAugSplitBtn(){
   const row=$('#augSplitRow'); if(!row) return;
   const maxAugLvl=Math.max(...S.augs.map(a=>a.lvlAug||0));
+  let html='';
+  // Base split (eAug)
   if(S.shop.augSplitUnlocked){
-    row.innerHTML=`<button class="minibtn" onclick="splitAugEnergy()">⚡ Split Aug Energy</button>`;
+    html+=`<button class="minibtn" onclick="splitAugEnergy()">⚡ Split Base</button>`;
   } else if(maxAugLvl>=5){
-    const canAfford=S.gems>=100;
-    row.innerHTML=`<button class="minibtn" onclick="unlockAugSplit()" style="${canAfford?'':'opacity:.5;pointer-events:none'}">🔒 Unlock Split (100 💎)</button>`;
+    const can=S.gems>=100;
+    html+=`<button class="minibtn" onclick="unlockAugSplit()" style="${can?'':'opacity:.5;pointer-events:none'}">🔒 Unlock Base Split (100 💎)</button>`;
   } else {
-    row.innerHTML=`<span class="note" style="font-size:12px">⚡ Split unlocks at aug level 5</span>`;
+    html+=`<span class="note" style="font-size:12px">⚡ Splits unlock at aug level 5</span>`;
   }
+  // Boost split (eBoost)
+  if(S.shop.augBoostSplitUnlocked){
+    html+=`<button class="minibtn" onclick="splitAugBoostEnergy()">💠 Split Boost</button>`;
+  } else if(maxAugLvl>=5){
+    const can=S.gems>=300;
+    html+=`<button class="minibtn" onclick="unlockAugBoostSplit()" style="${can?'':'opacity:.5;pointer-events:none'}">🔒 Unlock Boost Split (300 💎)</button>`;
+  }
+  row.innerHTML=html;
 }
 function unlockAugSplit(){
   if(S.gems<100){floaty('Need 100 gems!','var(--blue)');return;}
   S.gems-=100; S.shop.augSplitUnlocked=true;
-  floaty('⚡ Aug Split UNLOCKED!','var(--leaf)',14);
-  renderAugSplitBtn();
+  floaty('⚡ Base Split UNLOCKED!','var(--leaf)',14);
+  renderAugSplitBtn(); renderResBar();
+}
+function unlockAugBoostSplit(){
+  if(S.gems<300){floaty('Need 300 gems!','var(--blue)');return;}
+  S.gems-=300; S.shop.augBoostSplitUnlocked=true;
+  floaty('💠 Boost Split UNLOCKED!','var(--leaf)',14);
+  renderAugSplitBtn(); renderResBar();
 }
 function itemSellValue(item){
   if(!item) return 0;
@@ -2406,8 +2470,18 @@ $('#importBtn').onclick=()=>{
 function syncMuteBtn(){ $('#muteBtn').textContent=S.muted?'🔇':'🔊'; }
 $('#muteBtn').onclick=()=>{ S.muted=!S.muted; syncMuteBtn(); if(!S.muted) sfxBuy(); };
 
-function syncIdleBtn(){ $('#idleE').textContent='Auto-split Energy: '+(S.idleE?'ON':'OFF'); }
+function syncIdleBtn(){
+  const b=$('#idleE');
+  b.textContent=S.idleEUnlocked ? ('Auto-split Energy: '+(S.idleE?'ON':'OFF'))
+                                : '🔒 Unlock Auto-split (50 💎)';
+}
 $('#idleE').onclick=()=>{
+  if(!S.idleEUnlocked){
+    if(S.gems<50){ floaty('Need 50 gems!','var(--blue)'); return; }
+    S.gems-=50; S.idleEUnlocked=true;
+    floaty('⚡ Auto-split UNLOCKED!','var(--leaf)',14);
+    syncIdleBtn(); renderResBar(); return;
+  }
   S.idleE=!S.idleE;
   if(S.idleE){
     // Zero aug allocs first so they don't double-count energy
@@ -2691,6 +2765,8 @@ function load(){
     if(typeof S.shop.power4xUnlocked!=='boolean') S.shop.power4xUnlocked=false;
     if(typeof S.shop.battleTonicUnlocked!=='boolean') S.shop.battleTonicUnlocked=false;
     if(typeof S.shop.augSplitUnlocked!=='boolean') S.shop.augSplitUnlocked=false;
+    if(typeof S.shop.augBoostSplitUnlocked!=='boolean') S.shop.augBoostSplitUnlocked=false;
+    if(typeof S.idleEUnlocked!=='boolean') S.idleEUnlocked=(S.idleE===true); // grandfather: existing auto-split users keep it
     // ── Phase H migration: Magical Ape Sanctuary ──
     if(!S.sanctuary||typeof S.sanctuary!=='object') S.sanctuary={};
     const _sd=S.sanctuary;
