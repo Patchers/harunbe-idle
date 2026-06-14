@@ -121,6 +121,8 @@ h1{
 .inv-item.boss-loot .iname{color:var(--gold)}
 .inv-item.legendary-loot{border-color:var(--red);box-shadow:0 0 7px rgba(210,75,62,.55)}
 .inv-item.legendary-loot .iname{color:var(--red)}
+.inv-item.rare-loot{border-color:var(--blue);box-shadow:0 0 7px rgba(95,182,232,.5)}
+.inv-item.rare-loot .iname{color:var(--blue)}
 .ieqbtn{font-family:'Press Start 2P';font-size:7px;background:var(--panel2);color:var(--leaf);border:2px solid var(--leaf2);border-bottom:3px solid var(--leaf2);padding:5px 7px;cursor:pointer;white-space:nowrap;flex:none}
 .ieqbtn:active{transform:translateY(2px);border-bottom-width:1px}
 .note{color:var(--dim);font-size:15px;line-height:1.5}
@@ -1211,12 +1213,15 @@ const ACHIEVEMENTS=[
 
 /* Phase G — offline tiers (bought sequentially) */
 const OFFLINE_TIERS=[
-  {pct:10,  gemCost:10},
-  {pct:25,  gemCost:30},
-  {pct:50,  gemCost:100},
-  {pct:75,  gemCost:300},
-  {pct:90,  gemCost:750},
-  {pct:100, gemCost:2000},
+  {pct:10, gemCost:10},
+  {pct:15, gemCost:25},
+  {pct:20, gemCost:50},
+  {pct:25, gemCost:90},
+  {pct:30, gemCost:150},
+  {pct:35, gemCost:250},
+  {pct:40, gemCost:400},
+  {pct:45, gemCost:650},
+  {pct:50, gemCost:1000},
 ];
 
 /* Phase G — tap combo milestones */
@@ -1300,7 +1305,7 @@ const SHOP_ITEMS=[
    cost:()=>({c:Math.floor(2000*Math.pow(1.5,S.mines.magic)),g:0}),
    buy:()=>S.mines.magic++, unlockRebirths:10},
   // ── Offline progress tiers ────────────────────────────────────────────────
-  {id:'offline', name:'Offline Ticker', icon:'daily',  type:'perm',
+  {id:'offline', name:'Offline Ticker', icon:'daily',  type:'perm', noBulk:true,
    desc:()=>{
      const t=S.offlineTier;
      const cur=t>0?OFFLINE_TIERS[t-1].pct+'%':'5% (base)';
@@ -1422,10 +1427,12 @@ function rollGear(zone,slot,isBoss){
     hth=base*3+(isBoss?base:0)+zBonus*6;
     pwr=Math.floor(base*0.1);
   }
-  // 4% chance: LEGENDARY — red aura, double stats
-  const legendary=Math.random()<0.04;
-  if(legendary){ pwr*=2; tgh*=2; hth*=2; rgn*=2; }
-  return {slot,name,pwr,tgh,hth,rgn,zone,isBoss,legendary};
+  // Rarity roll: 4% LEGENDARY (red aura, ×2 stats), else 10% RARE (blue aura, ×1.5)
+  let legendary=false, rare=false;
+  const rr=Math.random();
+  if(rr<0.04){ legendary=true; pwr*=2; tgh*=2; hth*=2; rgn*=2; }
+  else if(rr<0.14){ rare=true; pwr=Math.round(pwr*1.5); tgh=Math.round(tgh*1.5); hth=Math.round(hth*1.5); rgn=Math.round(rgn*1.5); }
+  return {slot,name,pwr,tgh,hth,rgn,zone,isBoss,legendary,rare};
 }
 // Drop a gear item into the inventory (if room) and celebrate legendaries.
 function awardGear(zone,slot,isBoss){
@@ -1438,6 +1445,9 @@ function awardGear(zone,slot,isBoss){
     if(typeof shake==='function') shake();
     const er=$('#advEnemy').getBoundingClientRect();
     if(er.width&&typeof burst==='function') burst(er.left+er.width/2,er.top+er.height/2,'⭐',8);
+  } else if(g.rare){
+    floaty('✦ RARE DROP!','#5fb6e8',14);
+    if(typeof sfxBuy==='function') sfxBuy();
   }
   return g;
 }
@@ -1787,12 +1797,13 @@ function unlockAugBoostSplit(){
 function itemSellValue(item){
   if(!item) return 0;
   const power=(item.pwr||0)+(item.tgh||0)+Math.floor((item.hth||0)/5)+(item.rgn||0)*4;
-  const val=Math.floor(power*0.5+(item.zone||1)*3+(item.isBoss?40:0)+(item.legendary?60:0));
-  return Math.max(10, Math.min(val, item.legendary?900:500)); // legendaries worth more
+  const val=Math.floor(power*0.5+(item.zone||1)*3+(item.isBoss?40:0)+(item.legendary?60:item.rare?30:0));
+  return Math.max(10, Math.min(val, item.legendary?900:item.rare?700:500)); // rarer = worth more
 }
-// Aura glow for a gear sprite: legendary red takes precedence over boss gold.
+// Aura glow for a gear sprite: legendary red > rare blue > boss gold.
 function gearAura(item){
   if(item.legendary) return 'filter:drop-shadow(0 0 4px var(--red)) drop-shadow(0 0 2px var(--red))';
+  if(item.rare)      return 'filter:drop-shadow(0 0 4px var(--blue)) drop-shadow(0 0 2px var(--blue))';
   if(item.isBoss)    return 'filter:drop-shadow(0 0 3px var(--gold))';
   return '';
 }
@@ -1809,7 +1820,7 @@ function renderAdv(){
     (a.isBoss?'<span class="boss-warn">★ BOSS</span>':'');
 
   // Hero
-  $('#advHero').src=sprite(S.rebirths>0?'harunbe_evolved':'harunbe_idle');
+  $('#advHero').src=sprite(S.rebirths>=10?'harunbe_evolved':'harunbe_idle');
   $('#heroHp').style.width=Math.max(0,a.hp/hMax*100)+'%';
   $('#heroStats').textContent='HP '+Math.ceil(a.hp)+'/'+hMax;
 
@@ -1845,8 +1856,8 @@ function renderAdv(){
   S.adv.gear.forEach((item,i)=>{
     const d=el('div',item?'gear has-item':'gear');
     if(item){
-      d.title=`${item.legendary?'★ LEGENDARY ':''}${item.name}\nPWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}\nClick to unequip`;
-      d.innerHTML=`<img src="${sprite(GEAR_SPRS[i])}" style="${gearAura(item)}"><div class="gear-slot-lbl" style="color:${item.legendary?'var(--red)':'var(--leaf2)'}">${SLOT_NAMES[i]}</div>`;
+      d.title=`${item.legendary?'★ LEGENDARY ':item.rare?'✦ RARE ':''}${item.name}\nPWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}\nClick to unequip`;
+      d.innerHTML=`<img src="${sprite(GEAR_SPRS[i])}" style="${gearAura(item)}"><div class="gear-slot-lbl" style="color:${item.legendary?'var(--red)':item.rare?'var(--blue)':'var(--leaf2)'}">${SLOT_NAMES[i]}</div>`;
       d.onclick=()=>{S.adv.inventory.push(item);S.adv.gear[i]=null;renderAdv();};
     } else {
       d.innerHTML=`<img src="${sprite(GEAR_SPRS[i])}" style="opacity:.18"><div class="gear-slot-lbl">${SLOT_NAMES[i]}</div>`;
@@ -1873,11 +1884,13 @@ function renderAdv(){
   sellAllBar.appendChild(saBtn); il.appendChild(sellAllBar);
   S.adv.inventory.forEach((item,idx)=>{
     const sv=itemSellValue(item);
-    const row=el('div','inv-item'+(item.legendary?' legendary-loot':(item.isBoss?' boss-loot':'')));
+    const row=el('div','inv-item'+(item.legendary?' legendary-loot':item.rare?' rare-loot':(item.isBoss?' boss-loot':'')));
     const stats=`PWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}`;
+    const mark=item.legendary?'<span style="color:var(--red)">★ </span>':item.rare?'<span style="color:var(--blue)">✦ </span>':'';
+    const tag=item.legendary?' • <span style="color:var(--red)">LEGENDARY</span>':item.rare?' • <span style="color:var(--blue)">RARE</span>':'';
     row.innerHTML=`<img src="${sprite(GEAR_SPRS[item.slot])}" style="${gearAura(item)}">
-      <div style="flex:1"><div class="iname">${item.legendary?'<span style="color:var(--red)">★ </span>':''}${item.name}
-        <span style="color:var(--dim);font-size:14px">[${SLOT_NAMES[item.slot]}] Z${item.zone}${item.legendary?' • <span style="color:var(--red)">LEGENDARY</span>':''}</span></div>
+      <div style="flex:1"><div class="iname">${mark}${item.name}
+        <span style="color:var(--dim);font-size:14px">[${SLOT_NAMES[item.slot]}] Z${item.zone}${tag}</span></div>
         <div class="istats">${stats}</div></div>
       <button class="ieqbtn">EQUIP</button>
       <button class="ieqbtn" style="color:var(--gold);border-color:var(--gold2);margin-left:3px">SELL<br><span style="font-size:7px">+${sv}🪙</span></button>`;
@@ -2114,7 +2127,7 @@ function renderShop(){
     const {c,g}=item.cost();
     const isMaxed=c===0&&g===0&&item.id==='offline'&&S.offlineTier>=OFFLINE_TIERS.length;
     const canAfford=!isMaxed&&(c===0||S.coins>=c)&&(g===0||S.gems>=g);
-    const times=b10On&&item.type==='perm'?10:1;
+    const times=b10On&&item.type==='perm'&&!item.noBulk?10:1;
     const costStr=isMaxed?'MAXED':(c>0?`${fmt(c*times)} 🪙`:'')+((c>0&&g>0)?' + ':'')+( g>0?`${g*times} 💎`:'');
     let extra='';
     if(item.type==='timed') extra=timerStr(S.shop[item.timeField]||0);
@@ -2167,7 +2180,7 @@ function renderShop(){
     const item=SHOP_ITEMS.find(x=>x.id===btn.dataset.shopid);
     if(!item) return;
     btn.onclick=()=>{
-      const times=b10On&&item.type==='perm'?10:1;
+      const times=b10On&&item.type==='perm'&&!item.noBulk?10:1;
       let bought=0;
       for(let i=0;i<times;i++){
         const {c,g}=item.cost();
@@ -2320,7 +2333,7 @@ function mood(){
   if(S.adv.hp<heroMaxHp()*0.3&&S.adv.enemyHp>0) return ['harunbe_angry','angry!'];
   if(recentTap) return ['harunbe_happy','happy :)'];
   if(Date.now()-lastTap>30000&&bananasPerSec()<1) return ['harunbe_sleep','zzz...'];
-  if(S.rebirths>0) return ['harunbe_evolved','evolved'];
+  if(S.rebirths>=10) return ['harunbe_evolved','evolved'];
   if(bananasPerSec()>0) return ['harunbe_work','working'];
   return ['harunbe_idle','idle'];
 }
