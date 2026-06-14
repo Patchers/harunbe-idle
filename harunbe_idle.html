@@ -1239,10 +1239,20 @@ const SHOP_ITEMS=[
    desc:'×4 all banana production for 2 min (2² bonus)',
    cost:()=>({c:100,g:0}),  timeField:'prod4xEnds',  dur:120,
    unlockFlag:'power4xUnlocked', unlockRebirths:8, unlockCost:{g:500}},
-  {id:'advBoost',  name:'Battle Tonic',   icon:'potion', type:'timed',
-   desc:'×10 all combat stats for 5 minutes',
-   cost:()=>({c:50,g:0}),   timeField:'advBoostEnds',dur:300,
-   unlockFlag:'battleTonicUnlocked', unlockRebirths:6, unlockCost:{g:200}},
+  // ── Battle boosts — timed combat-stat multipliers. NOT stackable: buying any
+  //    one REPLACES the active battle boost (sets its multiplier + timer). ──────
+  {id:'battle2x', name:'Battle Potion',  icon:'potion', type:'battle', mult:2, dur:120,
+   desc:'×2 all combat stats for 2 min — replaces any active battle boost',
+   cost:()=>({c:50,g:0}),  unlockRebirths:3},
+  {id:'battle4x', name:'Battle Draft',   icon:'potion', type:'battle', mult:4, dur:120,
+   desc:'×4 all combat stats for 2 min — replaces any active battle boost',
+   cost:()=>({c:100,g:0}), unlockRebirths:6},
+  {id:'battle6x', name:'Battle Tonic',   icon:'potion', type:'battle', mult:6, dur:120,
+   desc:'×6 all combat stats for 2 min — replaces any active battle boost',
+   cost:()=>({c:200,g:0}), unlockRebirths:9},
+  {id:'battle8x', name:'Get Rekt Tonic', icon:'potion', type:'battle', mult:8, dur:120,
+   desc:'×8 all combat stats for 2 min — replaces any active battle boost',
+   cost:()=>({c:500,g:0}), unlockRebirths:12},
   // ── Permanent adventure stats ──────────────────────────────────────────────
   {id:'permPwr',   name:'Power Rune',     icon:'shield', type:'perm',
    desc:'Permanent +1 hero power',
@@ -1334,7 +1344,7 @@ const S={
   pomodoro:{potions:0, active:false, startMs:0, boostEnds:0, boostMult:1},
   buy10xUnlocked:false, buy10xOn:false,
   shop:{
-    prod2xEnds:0, prod4xEnds:0, advBoostEnds:0,
+    prod2xEnds:0, prod4xEnds:0, advBoostEnds:0, advBoostMult:1,
     permPwr:0, permTgh:0, permHth:0, permRgn:0, permAugBoost:0,
     magicBuys:0, energyBuys:0, clickBuys:0,
     permPwrBuys:0, permTghBuys:0, permHthBuys:0, permRgnBuys:0, permAugBuys:0,
@@ -1376,7 +1386,7 @@ function shopProdMult(){
   const n=Date.now();
   return (S.shop.prod2xEnds>n?2:1)*(S.shop.prod4xEnds>n?4:1);
 }
-function shopAdvMult(){ return S.shop.advBoostEnds>Date.now()?10:1; }
+function shopAdvMult(){ return S.shop.advBoostEnds>Date.now()?(S.shop.advBoostMult||1):1; }
 function potionMult(){ return (S.pomodoro&&Date.now()<(S.pomodoro.boostEnds||0))?(S.pomodoro.boostMult||1):1; }
 function pomodoroActiveMult(){ return (S.pomodoro&&S.pomodoro.active)?1.5:1; }
 function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult()*potionMult()*pomodoroActiveMult()*sanctProdMult(); }
@@ -2014,7 +2024,7 @@ function renderShop(){
       <span style="color:var(--leaf)">⚡ ACTIVE: </span>
       ${p2?`<span style="color:var(--gold)">×2${timerStr(S.shop.prod2xEnds)}</span> `:''}
       ${p4?`<span style="color:var(--gold)">×4${timerStr(S.shop.prod4xEnds)}</span> `:''}
-      ${ab?`<span style="color:var(--red)">Battle×10${timerStr(S.shop.advBoostEnds)}</span>`:''}
+      ${ab?`<span style="color:var(--red)">Battle×${S.shop.advBoostMult||1}${timerStr(S.shop.advBoostEnds)}</span>`:''}
     </div>`;
   }
   html+=`<div class="note" style="margin-bottom:6px;font-size:13px">
@@ -2081,7 +2091,9 @@ function renderShop(){
     const canAfford=!isMaxed&&(c===0||S.coins>=c)&&(g===0||S.gems>=g);
     const times=b10On&&item.type==='perm'?10:1;
     const costStr=isMaxed?'MAXED':(c>0?`${fmt(c*times)} 🪙`:'')+((c>0&&g>0)?' + ':'')+( g>0?`${g*times} 💎`:'');
-    let extra=''; if(item.type==='timed') extra=timerStr(S.shop[item.timeField]||0);
+    let extra='';
+    if(item.type==='timed') extra=timerStr(S.shop[item.timeField]||0);
+    else if(item.type==='battle' && S.shop.advBoostEnds>now && (S.shop.advBoostMult||1)===item.mult) extra=timerStr(S.shop.advBoostEnds);
     const buyLabel=isMaxed?'MAX':(times>1?'BUY ×10':'BUY');
     html+=`<div class="quest-row">
       <img src="${sprite(item.icon)}" style="width:34px;height:34px;flex:none">
@@ -2143,6 +2155,12 @@ function renderShop(){
           S.shop[item.timeField]=Math.max(Date.now(),cur)+item.dur*1000;
           floaty(item.name+'! '+Math.floor(item.dur/60)+'m','#ff4',13);
           break; // timed only buys once
+        } else if(item.type==='battle'){
+          // Non-stackable: REPLACE the active battle boost (don't extend/compound)
+          S.shop.advBoostEnds=Date.now()+item.dur*1000;
+          S.shop.advBoostMult=item.mult;
+          floaty(item.name+'! ×'+item.mult+' '+Math.floor(item.dur/60)+'m','#d24b3e',13);
+          break;
         } else {
           item.buy(); bought++;
         }
@@ -2608,7 +2626,7 @@ function tick(dt){
   if(a.enemyHp<=0) a.enemyHp=eMax;
 
   const tier=getEnemyTier(a.zone);
-  const sm=shopAdvMult(); // Battle Tonic multiplier (1 normally, 10 when active)
+  const sm=shopAdvMult(); // active battle-boost multiplier (1 when none active)
   a.enemyHp-=heroPower()*sm*dt*1.2;
 
   // Toughness reduces incoming damage; boss deals 2× base
@@ -2764,6 +2782,7 @@ function load(){
     if(typeof S.shop.jungle2xUnlocked!=='boolean') S.shop.jungle2xUnlocked=false;
     if(typeof S.shop.power4xUnlocked!=='boolean') S.shop.power4xUnlocked=false;
     if(typeof S.shop.battleTonicUnlocked!=='boolean') S.shop.battleTonicUnlocked=false;
+    if(typeof S.shop.advBoostMult!=='number') S.shop.advBoostMult=1; // battle-boost multiplier (non-stackable tiers)
     if(typeof S.shop.augSplitUnlocked!=='boolean') S.shop.augSplitUnlocked=false;
     if(typeof S.shop.augBoostSplitUnlocked!=='boolean') S.shop.augBoostSplitUnlocked=false;
     if(typeof S.idleEUnlocked!=='boolean') S.idleEUnlocked=(S.idleE===true); // grandfather: existing auto-split users keep it
