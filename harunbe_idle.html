@@ -1164,6 +1164,9 @@ const ACHIEVEMENTS=[
   {id:'aug10',       name:'Augmented',     desc:'Reach augment level 10',           check:()=>S.augs.some(a=>a.lvlAug>=10)},
   {id:'daily3',      name:'Regular',       desc:'Claim 3-day daily streak',         check:()=>(S.daily&&S.daily.streak>=3)},
   {id:'ngu20',       name:'NP Surge',      desc:'Any NP slot reach level 20',       check:()=>S.ngu.some(s=>s.lvl>=20)},
+  {id:'sanctuary',   name:'Awakened',      desc:'Discover the Magical Ape Sanctuary',check:()=>!!(S.sanctuary&&S.sanctuary.unlocked)},
+  {id:'archmage',    name:'Archmage',      desc:'Cast 50 spells',                    check:()=>!!(S.sanctuary&&S.sanctuary.lifetimeCasts>=50)},
+  {id:'ritualist',   name:'Ritualist',     desc:'Perform a Magical Ritual',          check:()=>!!(S.sanctuary&&S.sanctuary.rituals>=1)},
 ];
 
 /* Phase G — offline tiers (bought sequentially) */
