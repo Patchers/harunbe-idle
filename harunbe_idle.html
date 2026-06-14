@@ -151,6 +151,26 @@ body.shake{animation:shake .35s}
 .modal{background:var(--panel);border:3px solid var(--line);box-shadow:inset 0 0 0 2px #3a6b28,0 6px 0 var(--line);padding:22px 26px;text-align:center;max-width:360px;margin:0 16px}
 .modal h2{font-family:'Press Start 2P';font-size:13px;color:var(--gold);margin-bottom:12px;text-shadow:0 2px 0 #000}
 .modal .big{font-family:'Press Start 2P';font-size:18px;color:var(--leaf);margin:10px 0;text-shadow:0 2px 0 #000}
+/* sanctuary */
+.sanct-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--slot);border:2px solid var(--line);padding:8px 10px;margin-bottom:10px}
+.sanct-buffs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.buff-pill{font-size:14px;color:var(--cream);background:var(--slot);border:2px solid var(--leaf2);padding:4px 8px;display:flex;gap:5px;align-items:center}
+.buff-pill.syn{border-color:var(--mid);box-shadow:0 0 8px #7e5fa0;animation:comboPulse .6s infinite alternate}
+.spell{display:flex;gap:10px;align-items:center;background:var(--slot);border:2px solid var(--line);padding:9px;margin-bottom:8px;position:relative;overflow:hidden}
+.spell img{width:46px;height:46px;flex:none;image-rendering:pixelated;filter:drop-shadow(0 2px 0 #0a1408)}
+.spell .sp-body{flex:1;min-width:0}
+.spell .sp-name{font-size:17px}
+.spell .sp-lvl{color:var(--leaf);font-size:14px}
+.spell .sp-desc{color:var(--dim);font-size:13px;line-height:1.4;margin:2px 0}
+.spell .xpbar{height:8px;background:#0a1408;border:2px solid var(--line);overflow:hidden;margin-top:3px}
+.spell .xpbar>i{display:block;height:100%;background:linear-gradient(90deg,#7e5fa0,#caa6e0)}
+.spell .sp-right{flex:none;text-align:right;min-width:86px}
+.castbtn{font-family:'Press Start 2P';font-size:8px;color:#1a1a1a;background:var(--gold);border:none;border-bottom:3px solid var(--gold2);padding:8px 7px;cursor:pointer;width:100%;margin-top:4px}
+.castbtn:active{border-bottom-width:1px;transform:translateY(2px)}
+.castbtn.cooling{background:var(--panel2);color:var(--dim);border-bottom-color:var(--line);cursor:not-allowed}
+.castbtn.cant{background:var(--panel2);color:var(--red);border-bottom-color:var(--line);cursor:not-allowed}
+.cd-fill{position:absolute;left:0;bottom:0;height:3px;background:var(--blue);transition:width .2s linear}
+.ritual-box{background:linear-gradient(#2a1a3a,#16290f);border:2px solid var(--mid);padding:10px;margin-top:12px}
 </style>
 </head>
 <body>
@@ -252,6 +272,11 @@ body.shake{animation:shake .35s}
   <!-- SHOP -->
   <div class="view" data-view="shop">
     <div class="panel" id="shopPanel"></div>
+  </div>
+
+  <!-- SANCTUARY -->
+  <div class="view" data-view="sanctuary">
+    <div class="panel" id="sanctuaryPanel"></div>
   </div>
 
   <div class="foot">
@@ -2077,8 +2102,98 @@ function renderRebirth(){
   };
 }
 
+function renderSanctuary(){
+  const panel=$('#sanctuaryPanel'); if(!panel) return;
+  const s=S.sanctuary, now=Date.now();
+  if(!s.unlocked){
+    panel.innerHTML=`<h2>✨ THE SANCTUARY</h2>
+      <div class="note" style="text-align:center;padding:18px 6px;line-height:1.6">
+        A dormant magic sleeps within Harunbe…<br>
+        <span style="color:var(--dim);font-size:13px">It may awaken to those who reach <b style="color:var(--gold)">Rebirth ${SANCT_UNLOCK.rebirths}</b> and <b style="color:var(--blue)">Magic ${SANCT_UNLOCK.magicLvl}</b>.</span>
+      </div>`;
+    return;
+  }
+  const goldOn=s.buffs.gold.endsAt>now, powerOn=s.buffs.power.endsAt>now, synOn=s.synergyEndsAt>now;
+  const secs=ms=>Math.ceil((ms-now)/1000);
+  let html=`<h2>✨ MAGICAL APE SANCTUARY</h2>
+    <div class="sanct-head">
+      <span style="color:var(--blue)">${S.gems} 💎</span>
+      <span class="note" style="margin-left:auto">Casts: <b style="color:var(--leaf)">${s.lifetimeCasts}</b> &nbsp;•&nbsp; Rituals: <b style="color:var(--gold)">${s.rituals}</b> &nbsp;•&nbsp; Prod ×${(s.ritualMult||1).toFixed(2)}</span>
+    </div>`;
+
+  // active buffs
+  html+=`<div class="sanct-buffs">`;
+  html+= goldOn ?`<span class="buff-pill">💰 Gold ×${s.buffs.gold.mult.toFixed(1)} <span class="note">${secs(s.buffs.gold.endsAt)}s</span></span>`:'';
+  html+= powerOn?`<span class="buff-pill">⚔️ Power ×${s.buffs.power.mult.toFixed(1)} <span class="note">${secs(s.buffs.power.endsAt)}s</span></span>`:'';
+  html+= synOn  ?`<span class="buff-pill syn">✨ ${s.synergyName} ×${s.synergyMult} <span class="note">${secs(s.synergyEndsAt)}s</span></span>`:'';
+  if(!goldOn&&!powerOn&&!synOn) html+=`<span class="note" style="font-size:13px">No active spell effects — cast a spell below. Chain spells for synergies!</span>`;
+  html+=`</div>`;
+
+  // spells
+  SPELLS.forEach(def=>{
+    const sp=s.spells[def.id];
+    const cost=spellCost(def,sp), cooling=now<sp.cd, cdLeft=cooling?secs(sp.cd):0;
+    const cdTotal=spellCd(def,sp)*1000, cdPct=cooling?Math.max(0,Math.min(100,(sp.cd-now)/cdTotal*100)):0;
+    const need=spellNeed(sp.lvl), xpPct=Math.min(100,sp.xp/need*100);
+    const cant=!cooling&&S.gems<cost;
+    let effLine='';
+    if(def.id==='transmute') effLine=`+${((goldPerCast(sp.lvl))*100).toFixed(0)}% gold/gem (→cap ×${SANCT_CAPS.gold}) • ${spellDur(def,sp)}s`;
+    else if(def.id==='blessing') effLine=`+${((powerPerCast(sp.lvl))*100).toFixed(0)}% power (→cap ×${SANCT_CAPS.power}) • ${spellDur(def,sp)}s`;
+    else effLine=`Full heal + reset other cooldowns${sp.lvl>=5?` • +${Math.floor(sp.lvl/5)}💎`:''}`;
+    const btnCls=cooling?'castbtn cooling':(cant?'castbtn cant':'castbtn');
+    const btnTxt=cooling?`${cdLeft}s`:`CAST ${cost}💎`;
+    html+=`<div class="spell">
+      <img src="${sprite(def.icon)}">
+      <div class="sp-body">
+        <div><span class="sp-name" style="color:${def.col}">${def.name}</span> <span class="sp-lvl">Lv ${sp.lvl}</span></div>
+        <div class="sp-desc">${def.blurb}</div>
+        <div class="note" style="font-size:13px;color:var(--leaf)">${effLine}</div>
+        <div class="xpbar"><i style="width:${xpPct}%"></i></div>
+        <div class="note" style="font-size:11px">XP ${sp.xp}/${need} to Lv ${sp.lvl+1}</div>
+      </div>
+      <div class="sp-right">
+        <button class="${btnCls}" data-cast="${def.id}">${btnTxt}</button>
+      </div>
+      <div class="cd-fill" style="width:${cdPct}%"></div>
+    </div>`;
+  });
+
+  // ritual
+  const thr=ritualThreshold(), ready=ritualReady(), prog=Math.min(100,s.totalCasts/thr*100);
+  html+=`<div class="ritual-box">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:20px">🔮</span>
+      <span style="color:var(--mid);font-family:'Press Start 2P';font-size:11px;color:#caa6e0">MAGICAL RITUAL</span>
+      <span class="note" style="margin-left:auto">${s.totalCasts}/${thr} casts</span>
+    </div>
+    <div class="note" style="font-size:13px;margin-bottom:6px">Sacrifice your gems for a <b style="color:var(--gold)">permanent +${(SANCT_RITUAL_STEP*100).toFixed(0)}% production</b> (current ×${(s.ritualMult||1).toFixed(2)}, cap ×${SANCT_RITUAL_MULT_CAP}). Resets your gem balance.</div>
+    <div class="bar" style="margin-bottom:8px"><i style="width:${prog}%;background:linear-gradient(90deg,#7e5fa0,#caa6e0)"></i></div>
+    <button class="tapbtn" id="ritualBtn" style="width:100%;${ready?'':'opacity:.45;pointer-events:none'}">${ready?'🔮 PERFORM RITUAL (resets gems)':`Need ${thr-s.totalCasts} more casts`}</button>
+  </div>`;
+
+  panel.innerHTML=html;
+  panel.querySelectorAll('[data-cast]').forEach(b=>{ b.onclick=()=>castSpell(b.dataset.cast); });
+  const rb=panel.querySelector('#ritualBtn'); if(rb) rb.onclick=doRitual;
+}
+
+function showSanctuaryReveal(){
+  const bg=el('div','modal-bg');
+  bg.innerHTML=`<div class="modal" style="border-color:var(--gold);max-width:420px">
+    <h2 style="color:var(--gold)">✨ THE SANCTUARY AWAKENS ✨</h2>
+    <img src="${sprite('harunbe_evolved')}" style="width:104px;height:104px;filter:drop-shadow(0 0 12px var(--gold))">
+    <div class="note" style="margin:12px 0;line-height:1.6">Ancient magic stirs within Harunbe. The <b style="color:var(--gold)">Magical Ape Sanctuary</b> reveals itself — a place of spells, synergies, and world-shaking rituals.</div>
+    <div class="big" style="color:#caa6e0">3 Spells Unlocked</div>
+    <button class="tapbtn" style="margin-top:14px" id="sanctEnter">ENTER THE SANCTUARY</button>
+  </div>`;
+  document.body.appendChild(bg);
+  bg.querySelector('#sanctEnter').onclick=()=>{ bg.remove(); const t=document.querySelector('.tab[data-tabid="sanctuary"]'); if(t) t.click(); };
+  if(typeof sfxAch==='function') sfxAch();
+  if(typeof sfxCombo==='function') sfxCombo();
+  if(typeof shake==='function') shake();
+}
+
 function renderAll(){
-  renderResBar();renderBldgs();renderNGU();renderWandoos();renderAugs();renderAdv();renderShop();renderRebirth();renderQuests();
+  renderResBar();renderBldgs();renderNGU();renderWandoos();renderAugs();renderAdv();renderShop();renderRebirth();renderQuests();renderSanctuary();
   $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
     Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
     Global mult: <b>×${globalMult().toFixed(2)}</b><br>
@@ -2301,20 +2416,26 @@ $('#idleE').onclick=()=>{
 };
 
 /* tabs */
-const TABS=[['jungle','JUNGLE'],['power','POWER'],['adv','ADVENTURE'],['rebirth','REBIRTH'],['quests','QUESTS'],['shop','SHOP 🏪']];
+const TABS=[['jungle','JUNGLE'],['power','POWER'],['adv','ADVENTURE'],['rebirth','REBIRTH'],['quests','QUESTS'],['shop','SHOP 🏪'],['sanctuary','SANCTUARY ✨',true]];
 const tabBox=$('#tabs');
-TABS.forEach(([id,lbl],i)=>{
+TABS.forEach(([id,lbl,locked],i)=>{
   const t=el('div','tab'+(i===0?' active':''));
-  t.textContent=lbl;
+  t.textContent=lbl; t.dataset.tabid=id;
+  if(locked) t.style.display='none'; // revealed on sanctuary unlock
   t.onclick=()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     document.querySelector(`.view[data-view="${id}"]`).classList.add('active');
     if(id==='shop') renderShop();
+    if(id==='sanctuary') renderSanctuary();
   };
   tabBox.appendChild(t);
 });
+function refreshSanctuaryTab(){
+  const t=document.querySelector('.tab[data-tabid="sanctuary"]');
+  if(t) t.style.display=S.sanctuary.unlocked?'':'none';
+}
 
 /* ====================== TICK LOOP ====================== */
 function tick(dt){
@@ -2474,6 +2595,10 @@ let prev=performance.now(), uiAcc=0, _lastMood='';
 function frame(now){
   const dt=Math.min(0.25,(now-prev)/1000); prev=now;
   tick(dt); uiAcc+=dt; achAcc+=dt; if(achAcc>3){achAcc=0;checkAch();}
+  // Sanctuary discovery reveal (fires once)
+  if(S.sanctuary.unlocked&&!S.sanctuary.revealed){
+    S.sanctuary.revealed=true; refreshSanctuaryTab(); showSanctuaryReveal();
+  }
   const [mspr,mtxt]=mood();
   if(mspr!==_lastMood){ _lastMood=mspr; $('#mascot').src=sprite(mspr); $('#mood').textContent=mtxt; }
   if(uiAcc>0.2&&!pointerHeld){
@@ -2486,6 +2611,8 @@ function frame(now){
     if(qv.classList.contains('active')) renderQuests();
     const sv=document.querySelector('.view[data-view="shop"]');
     if(sv&&sv.classList.contains('active')) renderShop();
+    const scv=document.querySelector('.view[data-view="sanctuary"]');
+    if(scv&&scv.classList.contains('active')) renderSanctuary();
     $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
       Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
       Global mult: <b>×${globalMult().toFixed(2)}</b>
@@ -2620,6 +2747,7 @@ if(S._offline){
   bg.querySelector('#offlineOk').onclick=()=>{ bg.remove(); sfxBuy(); };
 }
 renderAll();
+refreshSanctuaryTab(); // show the tab immediately for already-unlocked saves
 requestAnimationFrame(frame);
 setInterval(save,10000);
 window.addEventListener('beforeunload',save);
