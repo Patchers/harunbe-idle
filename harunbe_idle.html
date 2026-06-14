@@ -1274,6 +1274,20 @@ const S={
     permPwrBuys:0, permTghBuys:0, permHthBuys:0, permRgnBuys:0, permAugBuys:0,
     jungle2xUnlocked:false, power4xUnlocked:false, battleTonicUnlocked:false, augSplitUnlocked:false,
   },
+  // ── Phase H: Magical Ape Sanctuary ──────────────────────────────────────────
+  sanctuary:{
+    unlocked:false, revealed:false,
+    spells:{
+      transmute:{lvl:1, xp:0, cd:0},
+      blessing: {lvl:1, xp:0, cd:0},
+      restore:  {lvl:1, xp:0, cd:0},
+    },
+    buffs:{ gold:{mult:1,endsAt:0}, power:{mult:1,endsAt:0} },
+    synergyMult:1, synergyEndsAt:0, synergyName:'',
+    lastCastId:null, lastCastAt:0,
+    totalCasts:0, lifetimeCasts:0,
+    rituals:0, ritualMult:1,
+  },
 };
 
 /* ── Derived functions ────────────────────────────────────────────────────── */
@@ -1299,8 +1313,8 @@ function shopProdMult(){
 function shopAdvMult(){ return S.shop.advBoostEnds>Date.now()?10:1; }
 function potionMult(){ return (S.pomodoro&&Date.now()<(S.pomodoro.boostEnds||0))?(S.pomodoro.boostMult||1):1; }
 function pomodoroActiveMult(){ return (S.pomodoro&&S.pomodoro.active)?1.5:1; }
-function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult()*potionMult()*pomodoroActiveMult(); }
-function heroPower(){    return 5+S.rebirths*3+equippedStat('pwr')+Math.floor(S.ngu[2].lvl*1.5)+Math.floor(augStat('pwr'))+(S.shop.permPwr||0); }
+function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult()*potionMult()*pomodoroActiveMult()*sanctProdMult(); }
+function heroPower(){    return Math.floor((5+S.rebirths*3+equippedStat('pwr')+Math.floor(S.ngu[2].lvl*1.5)+Math.floor(augStat('pwr'))+(S.shop.permPwr||0))*sanctPowerMult()); }
 function heroToughness(){ return equippedStat('tgh')+Math.floor(augStat('tgh'))+(S.shop.permTgh||0); }
 function heroMaxHp(){    return 50+S.adv.zone*10+S.rebirths*15+equippedStat('hth')+Math.floor(augStat('hth'))+(S.shop.permHth||0); }
 function heroRegen(){    return equippedStat('rgn')*0.5+augStat('rgn')+(S.shop.permRgn||0); }
@@ -1334,6 +1348,122 @@ function rollGear(zone,slot,isBoss){
 }
 function bananasPerSec(){ return S.gens.reduce((a,g)=>a+g.n*g.prod,0)*globalMult(); }
 function genCost(g){ return Math.floor(g.base*Math.pow(g.mult,g.n)); }
+
+/* ====================================================================== */
+/*  MAGICAL APE SANCTUARY  — modular spell / synergy / ritual system       */
+/*  Add new spells to SPELLS and new combos to SYNERGIES; the UI is data-  */
+/*  driven so the tree can be expanded later without touching render code. */
+/* ====================================================================== */
+const SANCT_UNLOCK   ={rebirths:15, magicLvl:50};   // gate before the unlock roll begins
+const SANCT_CAPS      ={gold:8, power:6};            // buff multipliers stack up to these caps
+const SANCT_RITUAL_BASE=25;                          // total casts before the 1st ritual is offered
+const SANCT_RITUAL_STEP=0.25;                        // permanent prod multiplier added per ritual
+const SANCT_RITUAL_MULT_CAP=5;                       // ritual multiplier hard cap (no runaway)
+
+const SPELLS=[
+  {id:'transmute', name:'Gold Transmutation', icon:'res_gem', col:'#f4c542',
+   baseCd:30, baseCost:5, costMult:1.55, baseDur:18,
+   blurb:'Transmute mana into wealth — boosts gem & gold gain.'},
+  {id:'blessing',  name:"Warrior's Blessing", icon:'shield',  col:'#d24b3e',
+   baseCd:45, baseCost:8, costMult:1.6,  baseDur:22,
+   blurb:'Empower the ape — boosts adventure power.'},
+  {id:'restore',   name:'Sanctuary Restore',  icon:'core',    col:'#5fb6e8',
+   baseCd:60, baseCost:6, costMult:1.5,  baseDur:0,
+   blurb:'Mend wounds to full HP and reset other spell cooldowns.'},
+];
+const SPELL_BY_ID=Object.fromEntries(SPELLS.map(s=>[s.id,s]));
+
+// Spell-sequence combos: casting seq[0] then seq[1] within the window fires a synergy.
+const SYNERGIES=[
+  {seq:['transmute','blessing'], name:'Avarice & War',   mult:1.6, dur:15},
+  {seq:['blessing','restore'],   name:'Iron Sanctuary',  mult:1.5, dur:15},
+  {seq:['restore','transmute'],  name:'Renewed Fortune', mult:1.7, dur:18},
+];
+const SYNERGY_WINDOW_MS=8000;
+
+/* ── scaling helpers ──────────────────────────────────────────────────────── */
+function spellNeed(lvl){ return Math.floor(5*Math.pow(1.4,lvl-1)); }            // XP for next level
+function cdReduction(){ return Math.max(0.55, 1-Math.max(0,S.wandoos.lvl-40)*0.004); } // higher Magic → shorter CDs (max −45%)
+function spellCd(def,sp){ return def.baseCd*cdReduction()*Math.max(0.7,1-(sp.lvl-1)*0.02); }
+function spellCost(def,sp){ return Math.ceil(def.baseCost*Math.pow(def.costMult,sp.lvl-1)); } // exponential gem cost
+function spellDur(def,sp){ return Math.round(def.baseDur*(1+(sp.lvl-1)*0.08)); }
+function goldPerCast(lvl){ return 0.6+lvl*0.25; }   // additive contribution into the gold buff
+function powerPerCast(lvl){ return 0.5+lvl*0.22; }  // additive contribution into the power buff
+
+/* ── live multipliers (defensive: safe before load / migration) ───────────── */
+function sanctSynergyMult(){ const s=S.sanctuary; return (s&&s.synergyEndsAt>Date.now())?s.synergyMult:1; }
+function sanctGoldMult(){ const s=S.sanctuary; if(!s)return 1; const b=s.buffs.gold; return ((b&&Date.now()<b.endsAt)?b.mult:1)*sanctSynergyMult(); }
+function sanctPowerMult(){ const s=S.sanctuary; if(!s)return 1; const b=s.buffs.power; return ((b&&Date.now()<b.endsAt)?b.mult:1)*sanctSynergyMult(); }
+function sanctProdMult(){ const s=S.sanctuary; if(!s)return 1; return (s.ritualMult||1)*sanctSynergyMult(); } // folded into globalMult()
+
+/* ── ritual (prestige) ────────────────────────────────────────────────────── */
+function ritualThreshold(){ return Math.floor(SANCT_RITUAL_BASE*Math.pow(2,S.sanctuary.rituals)); } // doubles each time
+function ritualReady(){ return S.sanctuary.unlocked && S.sanctuary.totalCasts>=ritualThreshold(); }
+function doRitual(){
+  const s=S.sanctuary; if(!ritualReady()) return;
+  s.rituals++;
+  s.ritualMult=Math.min(SANCT_RITUAL_MULT_CAP,(s.ritualMult||1)+SANCT_RITUAL_STEP);
+  S.gems=0;                 // risk: gem balance is sacrificed
+  s.totalCasts=0;           // progress toward the next ritual resets
+  floaty('🔮 RITUAL COMPLETE — Production ×'+s.ritualMult.toFixed(2),'#f4c542',17);
+  if(typeof sfxCombo==='function') sfxCombo();
+  if(typeof shake==='function') shake();
+  renderAll();
+}
+
+/* ── unlock (discoverable event) ──────────────────────────────────────────── */
+function sanctRollChance(){ return Math.min(0.05, 0.01+Math.max(0,S.wandoos.lvl-50)*0.001); } // 1%→5%
+function unlockSanctuary(){
+  if(S.sanctuary.unlocked) return;
+  S.sanctuary.unlocked=true; S.sanctuary.revealed=false; // frame() shows the reveal modal once
+}
+
+/* ── cast a spell ─────────────────────────────────────────────────────────── */
+function castSpell(id){
+  const s=S.sanctuary; if(!s.unlocked) return;
+  const def=SPELL_BY_ID[id], sp=s.spells[id], now=Date.now();
+  if(now<sp.cd){ floaty('On cooldown!','#9bb07f',12); return; }
+  const cost=spellCost(def,sp);
+  if(S.gems<cost){ floaty('Need '+cost+' 💎','#5fb6e8',13); return; }
+  S.gems-=cost;
+  sp.cd=now+spellCd(def,sp)*1000;
+
+  if(id==='transmute'){
+    const b=s.buffs.gold, active=now<b.endsAt;
+    b.mult=Math.min(SANCT_CAPS.gold,(active?b.mult:1)+goldPerCast(sp.lvl));
+    b.endsAt=now+spellDur(def,sp)*1000;
+    floaty('💰 Gold ×'+b.mult.toFixed(1),'#f4c542',14);
+  } else if(id==='blessing'){
+    const b=s.buffs.power, active=now<b.endsAt;
+    b.mult=Math.min(SANCT_CAPS.power,(active?b.mult:1)+powerPerCast(sp.lvl));
+    b.endsAt=now+spellDur(def,sp)*1000;
+    floaty('⚔️ Power ×'+b.mult.toFixed(1),'#d24b3e',14);
+  } else if(id==='restore'){
+    S.adv.hp=heroMaxHp();
+    SPELLS.forEach(o=>{ if(o.id!==id) s.spells[o.id].cd=0; });
+    if(sp.lvl>=5) S.gems+=Math.floor(sp.lvl/5); // high-level refund
+    floaty('🌿 Restored — HP full, cooldowns reset','#7fc14a',14);
+  }
+
+  // independent spell XP / level-up
+  sp.xp+=1;
+  while(sp.xp>=spellNeed(sp.lvl)){ sp.xp-=spellNeed(sp.lvl); sp.lvl++; floaty(def.name+' → Lv '+sp.lvl,'#caa6e0',13); if(typeof sfxAch==='function') sfxAch(); }
+
+  // synergy: did the previous cast + this one complete a combo?
+  const combo=SYNERGIES.find(sy=>sy.seq[0]===s.lastCastId&&sy.seq[1]===id&&(now-s.lastCastAt)<SYNERGY_WINDOW_MS);
+  if(combo){
+    s.synergyMult=combo.mult; s.synergyEndsAt=now+combo.dur*1000; s.synergyName=combo.name;
+    floaty('✨ SYNERGY: '+combo.name+' ×'+combo.mult,'#caa6e0',16);
+    if(typeof sfxCombo==='function') sfxCombo();
+    if(typeof shake==='function') shake();
+  }
+  s.lastCastId=id; s.lastCastAt=now;
+  s.totalCasts=(s.totalCasts||0)+1; s.lifetimeCasts=(s.lifetimeCasts||0)+1;
+
+  if(typeof sfxBuy==='function') sfxBuy();
+  if(typeof renderSanctuary==='function') renderSanctuary();
+  renderResBar();
+}
 
 /* number format */
 function fmt(n){
@@ -2121,6 +2251,7 @@ $('#rebirthBtn').onclick=()=>{
   const _nguInit=[30,40,55];
   S.ngu.forEach((s,i)=>{s.lvl=0;s.prog=0;s.alloc=0;s.need=_nguInit[i]||30;});
   S.wandoos.lvl=0; S.wandoos.prog=0; S.wandoos.alloc=0; S.wandoos.need=50;
+  _magicLvlSeen=0; // Magic level resets; sanctuary (if already unlocked) stays unlocked
   S.augs=Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100}));
   S.energy={cap:100,used:0,rate:6}; S.magic={cap:60,used:0,rate:3};
   S.adv.zoneKills=0; S.adv.isBoss=false;
@@ -2219,6 +2350,14 @@ function tick(dt){
       S.wandoos.prog -= S.wandoos.need; S.wandoos.lvl++; S.wandoos.need = Math.floor(S.wandoos.need * 1.10);
     }
   }
+  // Sanctuary unlock — once Rebirth 15 + Magic 50 are met, each Magic level-up
+  // past 50 rolls a 1–5% chance to discover the Magical Ape Sanctuary.
+  if(S.wandoos.lvl>_magicLvlSeen){
+    const gained=S.wandoos.lvl-_magicLvlSeen; _magicLvlSeen=S.wandoos.lvl;
+    if(!S.sanctuary.unlocked && S.rebirths>=SANCT_UNLOCK.rebirths && S.wandoos.lvl>=SANCT_UNLOCK.magicLvl){
+      for(let i=0;i<gained;i++){ if(Math.random()<sanctRollChance()){ unlockSanctuary(); break; } }
+    }
+  }
   // Pomodoro — check for completion (25 min idle)
   if(S.pomodoro&&S.pomodoro.active){
     const elapsed=Date.now()-S.pomodoro.startMs;
@@ -2282,11 +2421,12 @@ function tick(dt){
 
   if(a.enemyHp<=0){
     a.kills++; a.zoneKills++;
-    S.coins+=a.zone*(a.isBoss?10:3);
+    const gMult=sanctGoldMult(); // Gold Transmutation / synergy boost
+    S.coins+=Math.ceil(a.zone*(a.isBoss?10:3)*gMult);
 
     if(a.isBoss){
       // Boss defeated → gems + guaranteed gear drop + zone advance
-      S.gems+=a.zone; a.bossKills=(a.bossKills||0)+1;
+      S.gems+=Math.ceil(a.zone*gMult); a.bossKills=(a.bossKills||0)+1;
       sfxBoss(); shake();
       const er=$('#advEnemy').getBoundingClientRect();
       if(er.width) burst(er.left+er.width/2,er.top+er.height/2,'💎',8);
@@ -2319,6 +2459,7 @@ function tick(dt){
   if(a.hp>heroMaxHp()) a.hp=heroMaxHp();
 }
 let achAcc=0;
+let _magicLvlSeen=0; // tracks Magic level to detect level-ups for the sanctuary roll (set after load)
 
 // Panels rebuild their DOM wholesale; doing that while the user's pointer is
 // down destroys the pressed button between mousedown and mouseup, so the
@@ -2420,6 +2561,29 @@ function load(){
     if(typeof S.shop.power4xUnlocked!=='boolean') S.shop.power4xUnlocked=false;
     if(typeof S.shop.battleTonicUnlocked!=='boolean') S.shop.battleTonicUnlocked=false;
     if(typeof S.shop.augSplitUnlocked!=='boolean') S.shop.augSplitUnlocked=false;
+    // ── Phase H migration: Magical Ape Sanctuary ──
+    if(!S.sanctuary||typeof S.sanctuary!=='object') S.sanctuary={};
+    const _sd=S.sanctuary;
+    if(typeof _sd.unlocked!=='boolean') _sd.unlocked=false;
+    if(typeof _sd.revealed!=='boolean') _sd.revealed=_sd.unlocked; // old unlocked saves skip the reveal modal
+    if(!_sd.spells||typeof _sd.spells!=='object') _sd.spells={};
+    ['transmute','blessing','restore'].forEach(id=>{
+      const sp=_sd.spells[id]||{};
+      _sd.spells[id]={lvl:sp.lvl||1, xp:sp.xp||0, cd:sp.cd||0};
+    });
+    if(!_sd.buffs||typeof _sd.buffs!=='object') _sd.buffs={};
+    if(!_sd.buffs.gold)  _sd.buffs.gold ={mult:1,endsAt:0};
+    if(!_sd.buffs.power) _sd.buffs.power={mult:1,endsAt:0};
+    if(typeof _sd.synergyMult!=='number')  _sd.synergyMult=1;
+    if(typeof _sd.synergyEndsAt!=='number')_sd.synergyEndsAt=0;
+    if(typeof _sd.synergyName!=='string')  _sd.synergyName='';
+    if(typeof _sd.totalCasts!=='number')   _sd.totalCasts=0;
+    if(typeof _sd.lifetimeCasts!=='number')_sd.lifetimeCasts=0;
+    if(typeof _sd.rituals!=='number')      _sd.rituals=0;
+    if(typeof _sd.ritualMult!=='number')   _sd.ritualMult=1;
+    if(!('lastCastId' in _sd))             _sd.lastCastId=null;
+    if(typeof _sd.lastCastAt!=='number')   _sd.lastCastAt=0;
+
     // Fix needs bloated from missing rebirth reset in older saves
     const _nguInit=[30,40,55];
     S.ngu.forEach((s,i)=>{ if((s.need||0)>50000) s.need=_nguInit[i]||30; });
@@ -2435,6 +2599,7 @@ function load(){
 }
 
 load();
+_magicLvlSeen=S.wandoos.lvl; // baseline so only genuine level-ups trigger the sanctuary roll
 initQuests();
 syncIdleBtn();
 syncMuteBtn();
