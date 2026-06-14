@@ -304,9 +304,9 @@ const REAL_SPRITES = {};
      wandoosRate : higher → faster Wandoos levelling
    ─────────────────────────────────────────────────────────────────────────── */
 const TUNE = {
-  rebirthDiv:  5e5,   // ← #1
-  nguRate:     0.6,   // ← #2
-  wandoosRate: 0.5,   // ← #3
+  rebirthDiv:  1e6,   // ← #1  (was 5e5 — rebirths need ~2× more bananas; slows token snowball)
+  nguRate:     0.5,   // ← #2  (was 0.6 — gentler NP levelling)
+  wandoosRate: 0.42,  // ← #3  (was 0.5 — gentler Magic levelling)
 };
 
 /* ---- pixel-art renderer ---- */
@@ -1239,26 +1239,26 @@ const COMBO_MILESTONES=[
 const SHOP_ITEMS=[
   // ── Timed boosts ──────────────────────────────────────────────────────────
   {id:'prod2x',    name:'Jungle Surge',   icon:'potion', type:'timed',
-   desc:'×2 all banana production for 2 minutes',
+   desc:'×2 banana production for 2 min — buy to stack time (strongest potion wins)',
    cost:()=>({c:10,g:0}),   timeField:'prod2xEnds',  dur:120,
    unlockFlag:'jungle2xUnlocked', unlockRebirths:5, unlockCost:{g:100}},
   {id:'prod4x',    name:'Power Surge',    icon:'potion', type:'timed',
-   desc:'×4 all banana production for 2 min (2² bonus)',
+   desc:'×4 banana production for 2 min — buy to stack time (strongest potion wins)',
    cost:()=>({c:100,g:0}),  timeField:'prod4xEnds',  dur:120,
    unlockFlag:'power4xUnlocked', unlockRebirths:8, unlockCost:{g:500}},
   // ── Battle boosts — timed combat-stat multipliers. NOT stackable: buying any
   //    one REPLACES the active battle boost (sets its multiplier + timer). ──────
   {id:'battle2x', name:'Battle Potion',  icon:'potion', type:'battle', mult:2, dur:120,
-   desc:'×2 all combat stats for 2 min — replaces any active battle boost',
+   desc:'×2 combat stats for 2 min — buy to stack time (strongest potion wins)',
    cost:()=>({c:50,g:0}),  unlockRebirths:3},
   {id:'battle4x', name:'Battle Draft',   icon:'potion', type:'battle', mult:4, dur:120,
-   desc:'×4 all combat stats for 2 min — replaces any active battle boost',
+   desc:'×4 combat stats for 2 min — buy to stack time (strongest potion wins)',
    cost:()=>({c:100,g:0}), unlockRebirths:6},
   {id:'battle6x', name:'Battle Tonic',   icon:'potion', type:'battle', mult:6, dur:120,
-   desc:'×6 all combat stats for 2 min — replaces any active battle boost',
+   desc:'×6 combat stats for 2 min — buy to stack time (strongest potion wins)',
    cost:()=>({c:200,g:0}), unlockRebirths:9},
   {id:'battle8x', name:'Get Rekt Tonic', icon:'potion', type:'battle', mult:8, dur:120,
-   desc:'×8 all combat stats for 2 min — replaces any active battle boost',
+   desc:'×8 combat stats for 2 min — buy to stack time (strongest potion wins)',
    cost:()=>({c:500,g:0}), unlockRebirths:12},
   // ── Permanent adventure stats ──────────────────────────────────────────────
   {id:'permPwr',   name:'Power Rune',     icon:'shield', type:'perm',
@@ -1388,10 +1388,12 @@ function augStat(key){
 function nguBananaMult(){ return 1+S.ngu[0].lvl*0.012+S.ngu[2].lvl*0.008; } // additive — was quadratic product causing runaway scaling
 function nguClickMult(){ return 1+S.ngu[1].lvl*0.05; }
 function wandoosMult(){ return 1+S.wandoos.lvl*0.015; }
-function tokenMult(){ return 1+S.tokens*0.10; }
+function tokenMult(){ return 1+S.tokens*0.06; } // was 0.10 — damps the rebirth-token snowball
 function shopProdMult(){
+  // Potions stack DURATION (each timer accumulates) but NOT multipliers —
+  // the strongest active production boost takes precedence (no ×2·×4=×8).
   const n=Date.now();
-  return (S.shop.prod2xEnds>n?2:1)*(S.shop.prod4xEnds>n?4:1);
+  return Math.max(S.shop.prod2xEnds>n?2:1, S.shop.prod4xEnds>n?4:1);
 }
 function shopAdvMult(){ return S.shop.advBoostEnds>Date.now()?(S.shop.advBoostMult||1):1; }
 function potionMult(){ return (S.pomodoro&&Date.now()<(S.pomodoro.boostEnds||0))?(S.pomodoro.boostMult||1):1; }
@@ -1467,10 +1469,10 @@ const SANCT_RITUAL_MULT_CAP=5;                       // ritual multiplier hard c
 
 const SPELLS=[
   {id:'transmute', name:'Gold Transmutation', icon:'res_gem', col:'#f4c542',
-   baseCd:30, baseCost:5, costMult:1.55, baseDur:18,
+   baseCd:30, baseCost:5, costMult:1.55, baseDur:45,
    blurb:'Transmute mana into wealth — boosts gem & gold gain.'},
   {id:'blessing',  name:"Warrior's Blessing", icon:'shield',  col:'#d24b3e',
-   baseCd:45, baseCost:8, costMult:1.6,  baseDur:22,
+   baseCd:45, baseCost:8, costMult:1.6,  baseDur:50,
    blurb:'Empower the ape — boosts adventure power.'},
   {id:'restore',   name:'Sanctuary Restore',  icon:'core',    col:'#5fb6e8',
    baseCd:60, baseCost:6, costMult:1.5,  baseDur:0,
@@ -1480,9 +1482,9 @@ const SPELL_BY_ID=Object.fromEntries(SPELLS.map(s=>[s.id,s]));
 
 // Spell-sequence combos: casting seq[0] then seq[1] within the window fires a synergy.
 const SYNERGIES=[
-  {seq:['transmute','blessing'], name:'Avarice & War',   mult:1.6, dur:15},
-  {seq:['blessing','restore'],   name:'Iron Sanctuary',  mult:1.5, dur:15},
-  {seq:['restore','transmute'],  name:'Renewed Fortune', mult:1.7, dur:18},
+  {seq:['transmute','blessing'], name:'Avarice & War',   mult:1.6, dur:25},
+  {seq:['blessing','restore'],   name:'Iron Sanctuary',  mult:1.5, dur:25},
+  {seq:['restore','transmute'],  name:'Renewed Fortune', mult:1.7, dur:30},
 ];
 const SYNERGY_WINDOW_MS=8000;
 
@@ -2056,12 +2058,12 @@ function renderShop(){
   }
 
   const p2=S.shop.prod2xEnds>now, p4=S.shop.prod4xEnds>now, ab=S.shop.advBoostEnds>now;
+  const prodEff=shopProdMult(), prodEnd=Math.max(p2?S.shop.prod2xEnds:0,p4?S.shop.prod4xEnds:0);
   if(p2||p4||ab){
     html+=`<div class="daily-box" style="border-color:var(--leaf);margin-bottom:8px">
       <img src="${sprite('potion')}" style="width:28px;height:28px">
       <span style="color:var(--leaf)">⚡ ACTIVE: </span>
-      ${p2?`<span style="color:var(--gold)">×2${timerStr(S.shop.prod2xEnds)}</span> `:''}
-      ${p4?`<span style="color:var(--gold)">×4${timerStr(S.shop.prod4xEnds)}</span> `:''}
+      ${(p2||p4)?`<span style="color:var(--gold)">Prod×${prodEff}${timerStr(prodEnd)}</span> `:''}
       ${ab?`<span style="color:var(--red)">Battle×${S.shop.advBoostMult||1}${timerStr(S.shop.advBoostEnds)}</span>`:''}
     </div>`;
   }
@@ -2194,10 +2196,11 @@ function renderShop(){
           floaty(item.name+'! '+Math.floor(item.dur/60)+'m','#ff4',13);
           break; // timed only buys once
         } else if(item.type==='battle'){
-          // Non-stackable: REPLACE the active battle boost (don't extend/compound)
-          S.shop.advBoostEnds=Date.now()+item.dur*1000;
-          S.shop.advBoostMult=item.mult;
-          floaty(item.name+'! ×'+item.mult+' '+Math.floor(item.dur/60)+'m','#d24b3e',13);
+          // Stack DURATION; multipliers do NOT compound — strongest wins.
+          const now2=Date.now(), active=S.shop.advBoostEnds>now2;
+          S.shop.advBoostMult=Math.max(active?(S.shop.advBoostMult||1):1, item.mult);
+          S.shop.advBoostEnds=Math.max(now2,S.shop.advBoostEnds||0)+item.dur*1000;
+          floaty(item.name+'! ×'+S.shop.advBoostMult+' '+Math.floor((S.shop.advBoostEnds-now2)/60000)+'m','#d24b3e',13);
           break;
         } else {
           item.buy(); bought++;
@@ -2593,7 +2596,7 @@ function tick(dt){
     const drip = (16 + S.rebirths * 0.4) * S.mines.energy; // 8× boosted, scales with rebirth
     S.ngu.forEach(s=>{
       s.prog += (drip / S.ngu.length) * dt;
-      while(s.prog >= s.need){s.prog -= s.need; s.lvl++; s.need = Math.floor(s.need * 1.10);}
+      while(s.prog >= s.need){s.prog -= s.need; s.lvl++; s.need = Math.floor(s.need * 1.18);}
     });
   }
   // Magic Mines — directly drive Magic System progress (bypasses cap)
@@ -2601,7 +2604,7 @@ function tick(dt){
     const drip = (24 + S.rebirths * 0.4) * S.mines.magic; // 8× boosted, scales with rebirth
     S.wandoos.prog += drip * dt;
     while(S.wandoos.prog >= S.wandoos.need){
-      S.wandoos.prog -= S.wandoos.need; S.wandoos.lvl++; S.wandoos.need = Math.floor(S.wandoos.need * 1.10);
+      S.wandoos.prog -= S.wandoos.need; S.wandoos.lvl++; S.wandoos.need = Math.floor(S.wandoos.need * 1.18);
     }
   }
   // Sanctuary unlock — once Rebirth 15 + Magic 50 are met, each Magic level-up
