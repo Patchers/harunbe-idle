@@ -119,6 +119,8 @@ h1{
 .inv-item .iname{color:var(--cream);flex:1;font-size:17px;line-height:1.2}
 .inv-item .istats{color:var(--dim);font-size:14px;margin-top:2px}
 .inv-item.boss-loot .iname{color:var(--gold)}
+.inv-item.legendary-loot{border-color:var(--red);box-shadow:0 0 7px rgba(210,75,62,.55)}
+.inv-item.legendary-loot .iname{color:var(--red)}
 .ieqbtn{font-family:'Press Start 2P';font-size:7px;background:var(--panel2);color:var(--leaf);border:2px solid var(--leaf2);border-bottom:3px solid var(--leaf2);padding:5px 7px;cursor:pointer;white-space:nowrap;flex:none}
 .ieqbtn:active{transform:translateY(2px);border-bottom-width:1px}
 .note{color:var(--dim);font-size:15px;line-height:1.5}
@@ -1420,7 +1422,24 @@ function rollGear(zone,slot,isBoss){
     hth=base*3+(isBoss?base:0)+zBonus*6;
     pwr=Math.floor(base*0.1);
   }
-  return {slot,name,pwr,tgh,hth,rgn,zone,isBoss};
+  // 4% chance: LEGENDARY — red aura, double stats
+  const legendary=Math.random()<0.04;
+  if(legendary){ pwr*=2; tgh*=2; hth*=2; rgn*=2; }
+  return {slot,name,pwr,tgh,hth,rgn,zone,isBoss,legendary};
+}
+// Drop a gear item into the inventory (if room) and celebrate legendaries.
+function awardGear(zone,slot,isBoss){
+  if(S.adv.inventory.length>=30) return null;
+  const g=rollGear(zone,slot,isBoss);
+  S.adv.inventory.push(g);
+  if(g.legendary){
+    floaty('★ LEGENDARY DROP!','#d24b3e',16);
+    if(typeof sfxAch==='function') sfxAch();
+    if(typeof shake==='function') shake();
+    const er=$('#advEnemy').getBoundingClientRect();
+    if(er.width&&typeof burst==='function') burst(er.left+er.width/2,er.top+er.height/2,'⭐',8);
+  }
+  return g;
 }
 function bananasPerSec(){ return S.gens.reduce((a,g)=>a+g.n*g.prod,0)*globalMult(); }
 function genCost(g){ return Math.floor(g.base*Math.pow(g.mult,g.n)); }
@@ -1768,8 +1787,14 @@ function unlockAugBoostSplit(){
 function itemSellValue(item){
   if(!item) return 0;
   const power=(item.pwr||0)+(item.tgh||0)+Math.floor((item.hth||0)/5)+(item.rgn||0)*4;
-  const val=Math.floor(power*0.5+(item.zone||1)*3+(item.isBoss?40:0));
-  return Math.max(10, Math.min(val, 500)); // 10–500 gold
+  const val=Math.floor(power*0.5+(item.zone||1)*3+(item.isBoss?40:0)+(item.legendary?60:0));
+  return Math.max(10, Math.min(val, item.legendary?900:500)); // legendaries worth more
+}
+// Aura glow for a gear sprite: legendary red takes precedence over boss gold.
+function gearAura(item){
+  if(item.legendary) return 'filter:drop-shadow(0 0 4px var(--red)) drop-shadow(0 0 2px var(--red))';
+  if(item.isBoss)    return 'filter:drop-shadow(0 0 3px var(--gold))';
+  return '';
 }
 
 function renderAdv(){
@@ -1820,8 +1845,8 @@ function renderAdv(){
   S.adv.gear.forEach((item,i)=>{
     const d=el('div',item?'gear has-item':'gear');
     if(item){
-      d.title=`${item.name}\nPWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}\nClick to unequip`;
-      d.innerHTML=`<img src="${sprite(GEAR_SPRS[i])}" style="${item.isBoss?'filter:drop-shadow(0 0 3px var(--gold))':''}"><div class="gear-slot-lbl" style="color:var(--leaf2)">${SLOT_NAMES[i]}</div>`;
+      d.title=`${item.legendary?'★ LEGENDARY ':''}${item.name}\nPWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}\nClick to unequip`;
+      d.innerHTML=`<img src="${sprite(GEAR_SPRS[i])}" style="${gearAura(item)}"><div class="gear-slot-lbl" style="color:${item.legendary?'var(--red)':'var(--leaf2)'}">${SLOT_NAMES[i]}</div>`;
       d.onclick=()=>{S.adv.inventory.push(item);S.adv.gear[i]=null;renderAdv();};
     } else {
       d.innerHTML=`<img src="${sprite(GEAR_SPRS[i])}" style="opacity:.18"><div class="gear-slot-lbl">${SLOT_NAMES[i]}</div>`;
@@ -1848,11 +1873,11 @@ function renderAdv(){
   sellAllBar.appendChild(saBtn); il.appendChild(sellAllBar);
   S.adv.inventory.forEach((item,idx)=>{
     const sv=itemSellValue(item);
-    const row=el('div','inv-item'+(item.isBoss?' boss-loot':''));
+    const row=el('div','inv-item'+(item.legendary?' legendary-loot':(item.isBoss?' boss-loot':'')));
     const stats=`PWR+${item.pwr} TGH+${item.tgh} HP+${item.hth} RGN+${item.rgn}`;
-    row.innerHTML=`<img src="${sprite(GEAR_SPRS[item.slot])}" style="${item.isBoss?'filter:drop-shadow(0 0 3px var(--gold))':''}">
-      <div style="flex:1"><div class="iname">${item.name}
-        <span style="color:var(--dim);font-size:14px">[${SLOT_NAMES[item.slot]}] Z${item.zone}</span></div>
+    row.innerHTML=`<img src="${sprite(GEAR_SPRS[item.slot])}" style="${gearAura(item)}">
+      <div style="flex:1"><div class="iname">${item.legendary?'<span style="color:var(--red)">★ </span>':''}${item.name}
+        <span style="color:var(--dim);font-size:14px">[${SLOT_NAMES[item.slot]}] Z${item.zone}${item.legendary?' • <span style="color:var(--red)">LEGENDARY</span>':''}</span></div>
         <div class="istats">${stats}</div></div>
       <button class="ieqbtn">EQUIP</button>
       <button class="ieqbtn" style="color:var(--gold);border-color:var(--gold2);margin-left:3px">SELL<br><span style="font-size:7px">+${sv}🪙</span></button>`;
@@ -2646,16 +2671,12 @@ function tick(dt){
       sfxBoss(); shake();
       const er=$('#advEnemy').getBoundingClientRect();
       if(er.width) burst(er.left+er.width/2,er.top+er.height/2,'💎',8);
-      const slot=Math.floor(Math.random()*5);
-      if(a.inventory.length<30) a.inventory.push(rollGear(a.zone,slot,true));
+      awardGear(a.zone,Math.floor(Math.random()*5),true);
       a.isBoss=false; a.zoneKills=0; a.zone++;
       a.hp=Math.min(heroMaxHp(), a.hp+heroMaxHp()*0.5); // big victory heal
     } else {
       // Normal kill: 20% gear drop
-      if(Math.random()<0.20){
-        const slot=Math.floor(Math.random()*5);
-        if(a.inventory.length<30) a.inventory.push(rollGear(a.zone,slot,false));
-      }
+      if(Math.random()<0.20) awardGear(a.zone,Math.floor(Math.random()*5),false);
       if(a.zoneKills>=4) a.isBoss=true; // next enemy is the boss
       a.hp=Math.min(heroMaxHp(), a.hp+15);
     }
