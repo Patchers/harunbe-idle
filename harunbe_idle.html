@@ -1150,25 +1150,25 @@ const COMBO_MILESTONES=[
 /* ── Research Tech Tree nodes ──────────────────────────────────────────────── */
 const RESEARCH_NODES=[
   // 🍌 Banana Branch
-  {id:'rB1',branch:0,tier:0,name:'Quick Harvest', icon:'🍌',req:null,   cost:2000,
+  {id:'rB1',branch:0,tier:0,name:'Quick Harvest', icon:'🍌',req:null,   cost:20000,
    desc:'+15% idle building production',            effect:'idleBoost'},
-  {id:'rB2',branch:0,tier:1,name:'Combo Savant',  icon:'🍌',req:'rB1', cost:20000,
+  {id:'rB2',branch:0,tier:1,name:'Combo Savant',  icon:'🍌',req:'rB1', cost:200000,
    desc:'Combo window 3s→5s & bonus ×10→×15',      effect:'comboBoost'},
-  {id:'rB3',branch:0,tier:2,name:'Jungle Legend', icon:'🍌',req:'rB2', cost:200000,
+  {id:'rB3',branch:0,tier:2,name:'Jungle Legend', icon:'🍌',req:'rB2', cost:2000000,
    desc:'+10% to all production (permanent)',        effect:'globalBoost'},
   // ⚡ Power Branch
-  {id:'rP1',branch:1,tier:0,name:'Energy Wells',  icon:'⚡',req:null,   cost:3000,
-   desc:'+50 energy cap',                           effect:'energyCap'},
-  {id:'rP2',branch:1,tier:1,name:'Mine Tunneling',icon:'⚡',req:'rP1', cost:30000,
+  {id:'rP1',branch:1,tier:0,name:'Energy Wells',  icon:'⚡',req:null,   cost:30000,
+   desc:'+500 energy cap',                          effect:'energyCap'},
+  {id:'rP2',branch:1,tier:1,name:'Mine Tunneling',icon:'⚡',req:'rP1', cost:300000,
    desc:'Mines +30% drip rate',                     effect:'mineBoost'},
-  {id:'rP3',branch:1,tier:2,name:'Deep Memory',   icon:'⚡',req:'rP2', cost:300000,
+  {id:'rP3',branch:1,tier:2,name:'Deep Memory',   icon:'⚡',req:'rP2', cost:3000000,
    desc:'Keep 10% of NGU levels on rebirth',        effect:'rebirthCarry'},
   // 🔮 Magic Branch
-  {id:'rM1',branch:2,tier:0,name:'Arcane Pool',   icon:'🔮',req:null,   cost:2500,
-   desc:'+20 magic cap',                            effect:'magicCap'},
-  {id:'rM2',branch:2,tier:1,name:'Potion Mastery',icon:'🔮',req:'rM1', cost:25000,
+  {id:'rM1',branch:2,tier:0,name:'Arcane Pool',   icon:'🔮',req:null,   cost:25000,
+   desc:'+200 magic cap',                           effect:'magicCap'},
+  {id:'rM2',branch:2,tier:1,name:'Potion Mastery',icon:'🔮',req:'rM1', cost:250000,
    desc:'Pomodoro potion boost lasts +2 min',       effect:'potionDur'},
-  {id:'rM3',branch:2,tier:2,name:'Sanctuary Surge',icon:'🔮',req:'rM2',cost:250000,
+  {id:'rM3',branch:2,tier:2,name:'Sanctuary Surge',icon:'🔮',req:'rM2',cost:2500000,
    desc:'×1.25 Magic System production',            effect:'sanctuaryBoost'},
 ];
 
@@ -2311,8 +2311,8 @@ function renderResearch(){
       S.bananas-=n.cost;
       if(!S.research) S.research={};
       S.research[n.id]=true;
-      if(n.effect==='energyCap') S.energy.cap+=50;
-      if(n.effect==='magicCap')  S.magic.cap+=20;
+      if(n.effect==='energyCap') S.energy.cap+=500;
+      if(n.effect==='magicCap')  S.magic.cap+=200;
       floaty('🔬 '+n.name+'!','var(--leaf)',13);
       renderResearch(); renderResBar();
     };
@@ -2502,8 +2502,8 @@ $('#rebirthBtn').onclick=()=>{
   _magicLvlSeen=0; // Magic level resets; sanctuary (if already unlocked) stays unlocked
   S.augs=Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100}));
   S.energy={cap:100,used:0,rate:6}; S.magic={cap:60,used:0,rate:3};
-  if(hasResearch('rP1')) S.energy.cap+=50;
-  if(hasResearch('rM1')) S.magic.cap+=20;
+  if(hasResearch('rP1')) S.energy.cap+=500;
+  if(hasResearch('rM1')) S.magic.cap+=200;
   S.adv.zoneKills=0; S.adv.isBoss=false;
   renderAll(); save();
 };
