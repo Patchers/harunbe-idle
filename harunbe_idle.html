@@ -2263,6 +2263,62 @@ function showSanctuaryReveal(){
   if(typeof shake==='function') shake();
 }
 
+function renderResearch(){
+  const panel=$('#researchPanel'); if(!panel) return;
+  const nodeMap={}; RESEARCH_NODES.forEach(n=>nodeMap[n.id]=n);
+  const branches=[
+    {name:'🍌 BANANA BRANCH', nodes:['rB1','rB2','rB3']},
+    {name:'⚡ POWER BRANCH',  nodes:['rP1','rP2','rP3']},
+    {name:'🔮 MAGIC BRANCH',  nodes:['rM1','rM2','rM3']},
+  ];
+  let html=`<h2>🔬 RESEARCH</h2>
+  <div class="note" style="margin-bottom:12px">Permanent upgrades — survive all rebirths. Spend bananas to unlock.</div>`;
+  branches.forEach(br=>{
+    html+=`<div style="font-size:13px;color:var(--dim);margin-bottom:5px">${br.name}</div>
+    <div class="tech-branch">`;
+    br.nodes.forEach((nid,i)=>{
+      const n=nodeMap[nid];
+      const bought=hasResearch(nid);
+      const reqMet=!n.req||hasResearch(n.req);
+      const avail=!bought&&reqMet;
+      const canAfford=S.bananas>=n.cost;
+      const cls='tech-node'+(bought?' bought':avail?' available':' locked');
+      let foot='';
+      if(bought){
+        foot=`<div style="color:var(--leaf);font-size:12px;margin-top:5px">✓ RESEARCHED</div>`;
+      } else if(avail){
+        foot=`<div class="tn-cost" style="color:${canAfford?'var(--gold)':'var(--red)'}">${fmt(n.cost)} 🍌</div>
+          <button class="minibtn" data-resid="${nid}" style="margin-top:4px;font-size:7px;${canAfford?'':'opacity:.4;pointer-events:none'}">RESEARCH</button>`;
+      } else {
+        foot=`<div style="color:var(--dim);font-size:11px;margin-top:5px">🔒 ${nodeMap[n.req].name} first</div>`;
+      }
+      if(i>0) html+=`<div class="tech-arrow">→</div>`;
+      html+=`<div class="${cls}">
+        <span class="tn-icon">${n.icon}</span>
+        <span class="tn-name">${n.name}</span>
+        <div class="tn-desc">${n.desc}</div>
+        ${foot}
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  html+=`<div class="note" style="margin-top:10px;font-size:13px">Current bananas: <span style="color:var(--gold)">${fmt(S.bananas)} 🍌</span></div>`;
+  panel.innerHTML=html;
+  panel.querySelectorAll('[data-resid]').forEach(btn=>{
+    const n=nodeMap[btn.dataset.resid]; if(!n) return;
+    btn.onclick=()=>{
+      if(S.bananas<n.cost){floaty('Need more bananas!','var(--red)');return;}
+      S.bananas-=n.cost;
+      if(!S.research) S.research={};
+      S.research[n.id]=true;
+      if(n.effect==='energyCap') S.energy.cap+=50;
+      if(n.effect==='magicCap')  S.magic.cap+=20;
+      floaty('🔬 '+n.name+'!','var(--leaf)',13);
+      renderResearch(); renderResBar();
+    };
+  });
+}
+
 function renderAll(){
   renderResBar();renderBldgs();renderNGU();renderWandoos();renderAugs();renderAdv();renderShop();renderRebirth();renderQuests();renderSanctuary();renderResearch();
   $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
