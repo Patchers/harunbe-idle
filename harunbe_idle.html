@@ -175,6 +175,18 @@ body.shake{animation:shake .35s}
 .castbtn.cant{background:var(--panel2);color:var(--red);border-bottom-color:var(--line);cursor:not-allowed}
 .cd-fill{position:absolute;left:0;bottom:0;height:3px;background:var(--blue);transition:width .2s linear}
 .ritual-box{background:linear-gradient(#2a1a3a,#16290f);border:2px solid var(--mid);padding:10px;margin-top:12px}
+/* research tree */
+.tech-branch{display:flex;align-items:stretch;gap:0;margin-bottom:14px;flex-wrap:nowrap}
+.tech-node{width:110px;flex:none;background:var(--slot);border:2px solid var(--line);padding:8px 6px;text-align:center}
+.tech-node.available{border-color:var(--gold);cursor:pointer}
+.tech-node.available:hover{background:#172b10}
+.tech-node.bought{border-color:var(--leaf2)}
+.tech-node.locked{opacity:.35}
+.tech-node .tn-icon{font-size:18px;display:block;margin-bottom:3px}
+.tech-node .tn-name{font-family:'Press Start 2P';font-size:7px;color:var(--cream);line-height:1.4;margin-bottom:4px;display:block}
+.tech-node .tn-desc{font-size:12px;color:var(--dim);line-height:1.3}
+.tech-node .tn-cost{font-size:13px;margin-top:5px}
+.tech-arrow{color:var(--dim);font-size:20px;padding:0 4px;align-self:center;flex:none}
 </style>
 </head>
 <body>
@@ -281,6 +293,11 @@ body.shake{animation:shake .35s}
   <!-- SANCTUARY -->
   <div class="view" data-view="sanctuary">
     <div class="panel" id="sanctuaryPanel"></div>
+  </div>
+
+  <!-- RESEARCH -->
+  <div class="view" data-view="research">
+    <div class="panel" id="researchPanel"></div>
   </div>
 
   <div class="foot">
@@ -1130,6 +1147,31 @@ const COMBO_MILESTONES=[
   {at:5000, mult:10000, label:'ASCENDED'},
 ];
 
+/* ── Research Tech Tree nodes ──────────────────────────────────────────────── */
+const RESEARCH_NODES=[
+  // 🍌 Banana Branch
+  {id:'rB1',branch:0,tier:0,name:'Quick Harvest', icon:'🍌',req:null,   cost:2000,
+   desc:'+15% idle building production',            effect:'idleBoost'},
+  {id:'rB2',branch:0,tier:1,name:'Combo Savant',  icon:'🍌',req:'rB1', cost:20000,
+   desc:'Combo window 3s→5s & bonus ×10→×15',      effect:'comboBoost'},
+  {id:'rB3',branch:0,tier:2,name:'Jungle Legend', icon:'🍌',req:'rB2', cost:200000,
+   desc:'+10% to all production (permanent)',        effect:'globalBoost'},
+  // ⚡ Power Branch
+  {id:'rP1',branch:1,tier:0,name:'Energy Wells',  icon:'⚡',req:null,   cost:3000,
+   desc:'+50 energy cap',                           effect:'energyCap'},
+  {id:'rP2',branch:1,tier:1,name:'Mine Tunneling',icon:'⚡',req:'rP1', cost:30000,
+   desc:'Mines +30% drip rate',                     effect:'mineBoost'},
+  {id:'rP3',branch:1,tier:2,name:'Deep Memory',   icon:'⚡',req:'rP2', cost:300000,
+   desc:'Keep 10% of NGU levels on rebirth',        effect:'rebirthCarry'},
+  // 🔮 Magic Branch
+  {id:'rM1',branch:2,tier:0,name:'Arcane Pool',   icon:'🔮',req:null,   cost:2500,
+   desc:'+20 magic cap',                            effect:'magicCap'},
+  {id:'rM2',branch:2,tier:1,name:'Potion Mastery',icon:'🔮',req:'rM1', cost:25000,
+   desc:'Pomodoro potion boost lasts +2 min',       effect:'potionDur'},
+  {id:'rM3',branch:2,tier:2,name:'Sanctuary Surge',icon:'🔮',req:'rM2',cost:250000,
+   desc:'×1.25 Magic System production',            effect:'sanctuaryBoost'},
+];
+
 /* Phase F — shop item definitions */
 const SHOP_ITEMS=[
   // ── Timed boosts ──────────────────────────────────────────────────────────
@@ -1245,6 +1287,7 @@ const S={
   bestCombo:0, totalTaps:0, muted:false,
   pomodoro:{potions:0, active:false, startMs:0, boostEnds:0, boostMult:1},
   buy10xUnlocked:false, buy10xOn:false,
+  research:{},
   shop:{
     prod2xEnds:0, prod4xEnds:0, advBoostEnds:0, advBoostMult:1,
     permPwr:0, permTgh:0, permHth:0, permRgn:0, permAugBoost:0,
@@ -1280,6 +1323,7 @@ function augStat(key){
   });
   return t;
 }
+function hasResearch(id){ return S.research&&!!S.research[id]; }
 function nguBananaMult(){ return 1+S.ngu[0].lvl*0.012+S.ngu[2].lvl*0.008; } // additive — was quadratic product causing runaway scaling
 function nguClickMult(){ return 1+S.ngu[1].lvl*0.05; }
 function wandoosMult(){ return 1+S.wandoos.lvl*0.015; }
@@ -1293,7 +1337,7 @@ function shopProdMult(){
 function shopAdvMult(){ return S.shop.advBoostEnds>Date.now()?(S.shop.advBoostMult||1):1; }
 function potionMult(){ return (S.pomodoro&&Date.now()<(S.pomodoro.boostEnds||0))?(S.pomodoro.boostMult||1):1; }
 function pomodoroActiveMult(){ return (S.pomodoro&&S.pomodoro.active)?1.5:1; }
-function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult()*potionMult()*pomodoroActiveMult()*sanctProdMult(); }
+function globalMult(){ return nguBananaMult()*wandoosMult()*tokenMult()*shopProdMult()*potionMult()*pomodoroActiveMult()*sanctProdMult()*(hasResearch('rB3')?1.10:1); }
 function heroPower(){    return Math.floor((5+S.rebirths*3+equippedStat('pwr')+Math.floor(S.ngu[2].lvl*1.5)+Math.floor(augStat('pwr'))+(S.shop.permPwr||0))*sanctPowerMult()); }
 function heroToughness(){ return equippedStat('tgh')+Math.floor(augStat('tgh'))+(S.shop.permTgh||0); }
 function heroMaxHp(){    return 50+S.adv.zone*10+S.rebirths*15+equippedStat('hth')+Math.floor(augStat('hth'))+(S.shop.permHth||0); }
@@ -1354,7 +1398,7 @@ function awardGear(zone,slot,isBoss){
   }
   return g;
 }
-function bananasPerSec(){ return S.gens.reduce((a,g)=>a+g.n*g.prod,0)*globalMult(); }
+function bananasPerSec(){ return S.gens.reduce((a,g)=>a+g.n*g.prod,0)*globalMult()*(hasResearch('rB1')?1.15:1); }
 function genCost(g){ return Math.floor(g.base*Math.pow(g.mult,g.n)); }
 
 /* ====================================================================== */
@@ -2220,7 +2264,7 @@ function showSanctuaryReveal(){
 }
 
 function renderAll(){
-  renderResBar();renderBldgs();renderNGU();renderWandoos();renderAugs();renderAdv();renderShop();renderRebirth();renderQuests();renderSanctuary();
+  renderResBar();renderBldgs();renderNGU();renderWandoos();renderAugs();renderAdv();renderShop();renderRebirth();renderQuests();renderSanctuary();renderResearch();
   $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
     Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
     Global mult: <b>×${globalMult().toFixed(2)}</b><br>
@@ -2295,7 +2339,7 @@ function tap(e){
   const prevCombo=tapCombo; tapCombo++;
   if(S.bestCombo==null||tapCombo>S.bestCombo) S.bestCombo=tapCombo;
   if(comboTimer) clearTimeout(comboTimer);
-  comboTimer=setTimeout(()=>{tapCombo=0;updateComboDisp();},COMBO_RESET_MS);
+  comboTimer=setTimeout(()=>{tapCombo=0;updateComboDisp();},hasResearch('rB2')?5000:COMBO_RESET_MS);
 
   // FX
   sfxTap(tapCombo);
@@ -2321,7 +2365,7 @@ function tap(e){
   }
   // ── BASIC COMBO: every 25 taps (but not on 100-tap ultra) ───────────────────
   else if(tapCombo>=25 && tapCombo%25===0){
-    const bonus=amt*10;
+    const bonus=amt*(hasResearch('rB2')?15:10);
     S.bananas+=bonus; S.totalBananas+=bonus;
     floaty('COMBO ×10!','#ff4',13);
     floaty('+'+fmt(bonus),'var(--gold)',10);
@@ -2357,7 +2401,7 @@ function activatePotion(){
   const mults=[0,2,4,7,10];
   const m=mults[Math.min(S.pomodoro.potions,4)];
   S.pomodoro.boostMult=m;
-  S.pomodoro.boostEnds=Date.now()+5*60*1000; // 5 min boost
+  S.pomodoro.boostEnds=Date.now()+(5+(hasResearch('rM2')?2:0))*60*1000;
   S.pomodoro.potions=0;
   floaty('🧪 POTION! ×'+m+' for 5 min!','#0af',16);
   renderShop();
@@ -2391,11 +2435,19 @@ $('#rebirthBtn').onclick=()=>{
   S.tokens+=gain; S.rebirths++; S.bananas=0; S.totalBananas=0;
   S.gens.forEach(g=>g.n=0);
   const _nguInit=[30,40,55];
-  S.ngu.forEach((s,i)=>{s.lvl=0;s.prog=0;s.alloc=0;s.need=_nguInit[i]||30;});
+  const _carryPct=hasResearch('rP3')?0.10:0;
+  S.ngu.forEach((s,i)=>{
+    const keepLvl=Math.floor(s.lvl*_carryPct);
+    let kNeed=_nguInit[i]||30;
+    for(let k=0;k<keepLvl;k++) kNeed=Math.floor(kNeed*1.25);
+    s.lvl=keepLvl; s.prog=0; s.alloc=0; s.need=kNeed;
+  });
   S.wandoos.lvl=0; S.wandoos.prog=0; S.wandoos.alloc=0; S.wandoos.need=50;
   _magicLvlSeen=0; // Magic level resets; sanctuary (if already unlocked) stays unlocked
   S.augs=Array.from({length:5},()=>({eAug:0,eBoost:0,lvlAug:0,lvlBoost:0,progAug:0,progBoost:0,needAug:20,needBoost:100}));
   S.energy={cap:100,used:0,rate:6}; S.magic={cap:60,used:0,rate:3};
+  if(hasResearch('rP1')) S.energy.cap+=50;
+  if(hasResearch('rM1')) S.magic.cap+=20;
   S.adv.zoneKills=0; S.adv.isBoss=false;
   renderAll(); save();
 };
@@ -2453,7 +2505,7 @@ $('#idleE').onclick=()=>{
 };
 
 /* tabs */
-const TABS=[['jungle','JUNGLE'],['power','POWER'],['adv','ADVENTURE'],['rebirth','REBIRTH'],['quests','QUESTS'],['shop','SHOP 🏪'],['sanctuary','SANCTUARY ✨',true]];
+const TABS=[['jungle','JUNGLE'],['power','POWER'],['adv','ADVENTURE'],['rebirth','REBIRTH'],['quests','QUESTS'],['shop','SHOP 🏪'],['sanctuary','SANCTUARY ✨',true],['research','🔬 RESEARCH']];
 const tabBox=$('#tabs');
 TABS.forEach(([id,lbl,locked],i)=>{
   const t=el('div','tab'+(i===0?' active':''));
@@ -2466,6 +2518,7 @@ TABS.forEach(([id,lbl,locked],i)=>{
     document.querySelector(`.view[data-view="${id}"]`).classList.add('active');
     if(id==='shop') renderShop();
     if(id==='sanctuary') renderSanctuary();
+    if(id==='research') renderResearch();
   };
   tabBox.appendChild(t);
 });
@@ -2487,14 +2540,14 @@ function tick(dt){
   });
   // Wandoos
   if(S.wandoos.alloc>0){
-    S.wandoos.prog+=S.wandoos.alloc*dt*TUNE.wandoosRate;
+    S.wandoos.prog+=S.wandoos.alloc*dt*TUNE.wandoosRate*(hasResearch('rM3')?1.25:1);
     while(S.wandoos.prog>=S.wandoos.need){
       S.wandoos.prog-=S.wandoos.need; S.wandoos.lvl++; S.wandoos.need=Math.floor(S.wandoos.need*1.30);
     }
   }
   // Energy Mines — add directly to energy pool
   if(S.mines.energy>0){
-    const drip = (16 + S.rebirths * 0.4) * S.mines.energy; // 8× boosted, scales with rebirth
+    const drip = (16 + S.rebirths * 0.4) * S.mines.energy * (hasResearch('rP2')?1.30:1);
     S.ngu.forEach(s=>{
       s.prog += (drip / S.ngu.length) * dt;
       while(s.prog >= s.need){s.prog -= s.need; s.lvl++; s.need = Math.floor(s.need * 1.18);}
@@ -2502,7 +2555,7 @@ function tick(dt){
   }
   // Magic Mines — directly drive Magic System progress (bypasses cap)
   if(S.mines.magic>0){
-    const drip = (24 + S.rebirths * 0.4) * S.mines.magic; // 8× boosted, scales with rebirth
+    const drip = (24 + S.rebirths * 0.4) * S.mines.magic * (hasResearch('rP2')?1.30:1);
     S.wandoos.prog += drip * dt;
     while(S.wandoos.prog >= S.wandoos.need){
       S.wandoos.prog -= S.wandoos.need; S.wandoos.lvl++; S.wandoos.need = Math.floor(S.wandoos.need * 1.18);
@@ -2646,6 +2699,8 @@ function frame(now){
     if(sv&&sv.classList.contains('active')) renderShop();
     const scv=document.querySelector('.view[data-view="sanctuary"]');
     if(scv&&scv.classList.contains('active')) renderSanctuary();
+    const rv=document.querySelector('.view[data-view="research"]');
+    if(rv&&rv.classList.contains('active')) renderResearch();
     $('#rateNote').innerHTML=`Production: <b>${fmt(bananasPerSec())}</b> 🍌/s<br>
       Click power: <b>${fmt(S.click*nguClickMult()*tokenMult())}</b><br>
       Global mult: <b>×${globalMult().toFixed(2)}</b>
@@ -2723,12 +2778,12 @@ function load(){
     if(typeof S.shop.advBoostMult!=='number') S.shop.advBoostMult=1; // battle-boost multiplier (non-stackable tiers)
     if(typeof S.shop.augSplitUnlocked!=='boolean') S.shop.augSplitUnlocked=false;
     if(typeof S.shop.augBoostSplitUnlocked!=='boolean') S.shop.augBoostSplitUnlocked=false;
-    if(typeof S.idleEUnlocked!=='boolean') S.idleEUnlocked=(S.idleE===true); // grandfather: existing auto-split users keep it
-    // ── Phase H migration: Magical Ape Sanctuary ──
+    if(typeof S.idleEUnlocked!=='boolean') S.idleEUnlocked=(S.idleE===true);
+    // ── Sanctuary migration ──
     if(!S.sanctuary||typeof S.sanctuary!=='object') S.sanctuary={};
     const _sd=S.sanctuary;
     if(typeof _sd.unlocked!=='boolean') _sd.unlocked=false;
-    if(typeof _sd.revealed!=='boolean') _sd.revealed=_sd.unlocked; // old unlocked saves skip the reveal modal
+    if(typeof _sd.revealed!=='boolean') _sd.revealed=_sd.unlocked;
     if(!_sd.spells||typeof _sd.spells!=='object') _sd.spells={};
     ['transmute','blessing','restore'].forEach(id=>{
       const sp=_sd.spells[id]||{};
@@ -2746,7 +2801,8 @@ function load(){
     if(typeof _sd.ritualMult!=='number')   _sd.ritualMult=1;
     if(!('lastCastId' in _sd))             _sd.lastCastId=null;
     if(typeof _sd.lastCastAt!=='number')   _sd.lastCastAt=0;
-
+    // ── Research migration ──
+    if(!S.research||typeof S.research!=='object') S.research={};
     // Fix needs bloated from missing rebirth reset in older saves
     const _nguInit=[30,40,55];
     S.ngu.forEach((s,i)=>{ if((s.need||0)>50000) s.need=_nguInit[i]||30; });
